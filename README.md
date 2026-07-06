@@ -12,6 +12,7 @@ It captures a practical agentic development flow:
 - `/wait-what` pause/explain command
 - Codex destructive-command guard via `cc-safety-net`
 - generic `AGENTS.md` templates for user-level and project-level instructions
+- a `pi` CLI shim/alias for extension runtimes that still spawn `pi` while npm GSD publishes `gsd`
 - a small GSD/Pi npm export compatibility patch for community extensions
 
 This repo is intentionally public-safe. It contains no auth files, no API keys, no private project state, and no private runtime databases.
@@ -80,6 +81,7 @@ Edit these before installing if your project needs different defaults:
 
 This template includes guardrails, but it does not make autonomous coding risk-free.
 
+- `scripts/install.sh` creates a local `pi` command alias to `gsd` when needed. This prevents `spawn pi ENOENT` in extension runtimes.
 - `scripts/install.sh` may patch local GSD/Pi npm package export maps so community extensions load cleanly. This is idempotent and local to the machine.
 - `cc-safety-net` blocks many destructive shell commands; it is not a sandbox or firewall.
 - Approval boundaries still matter for pushes, deployments, external services, secrets, and paid API behavior.

@@ -81,11 +81,55 @@ install_gsd_package() {
   fi
 }
 
+ensure_pi_command() {
+  if command -v pi >/dev/null 2>&1; then
+    echo "pi command available: $(command -v pi)"
+    return
+  fi
+
+  local gsd_path gsd_dir user_bin user_shim
+  gsd_path="$(command -v gsd)"
+  gsd_dir="$(dirname "$gsd_path")"
+
+  # Prefer a real PATH-level alias next to gsd, so clean shells and child
+  # runtimes that spawn `pi` do not depend on shell startup files.
+  if [[ ! -e "$gsd_dir/pi" && -w "$gsd_dir" ]]; then
+    ln -s "$gsd_path" "$gsd_dir/pi"
+    echo "created pi symlink: $gsd_dir/pi -> $gsd_path"
+  fi
+
+  # Fallback for user-scoped GSD sessions. This path is first in the default
+  # GSD agent PATH on this workstation profile.
+  if ! command -v pi >/dev/null 2>&1; then
+    user_bin="$HOME/.gsd/agent/bin"
+    user_shim="$user_bin/pi"
+    if [[ ! -e "$user_shim" ]]; then
+      mkdir -p "$user_bin"
+      cat >"$user_shim" <<'SHIM'
+#!/usr/bin/env bash
+set -euo pipefail
+exec gsd "$@"
+SHIM
+      chmod +x "$user_shim"
+      echo "created pi shim: $user_shim"
+    fi
+  fi
+
+  if command -v pi >/dev/null 2>&1; then
+    echo "pi command available: $(command -v pi)"
+  else
+    echo "FAIL could not make 'pi' available on current PATH" >&2
+    echo "Ensure either $gsd_dir/pi or $user_shim is on PATH." >&2
+    exit 1
+  fi
+}
+
 need_cmd git
 need_cmd node
 need_cmd npm
 need_cmd python3
 need_cmd gsd
+ensure_pi_command
 
 if [[ ! -d "$PROJECT_REPO" ]]; then
   echo "Project repo path does not exist: $PROJECT_REPO" >&2

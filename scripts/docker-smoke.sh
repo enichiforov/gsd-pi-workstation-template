@@ -36,6 +36,7 @@ if [ "$load_failures" != "0" ]; then
   exit 1
 fi
 printf "GSD=%s\n" "$(gsd --version)"
+printf "PI=%s\n" "$(command -v pi)"
 cat /tmp/public-safe.log
 printf "load_failures=%s\n" "$load_failures"
 tail -1 /tmp/verify.log

@@ -36,9 +36,15 @@ require_file() {
 }
 
 require_cmd gsd
+require_cmd pi
 require_cmd npm
 require_cmd node
 require_cmd python3
+
+if ! pi --version >/dev/null 2>&1; then
+  echo "FAIL pi command exists but does not run" >&2
+  exit 1
+fi
 
 if ! python3 "$ROOT/scripts/patch-gsd-exports.py" --check; then
   echo "FAIL GSD/Pi package exports need compatibility patching." >&2

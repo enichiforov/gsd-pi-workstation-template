@@ -10,6 +10,7 @@ After this checklist:
 - Your project has a project-level `AGENTS.md`.
 - Pi/GSD has `pi-subagents`, `pi-lens`, `pi-simplify`, Plannotator, `/wait-what`, and pi-multi-pass installed.
 - Codex has `cc-safety-net` configured as a destructive-command guard, if Codex is installed.
+- `pi` is available as a CLI alias to `gsd` for extension runtimes that spawn `pi`.
 - Community Pi extensions load without lifecycle `Failed to load extension` errors.
 - `scripts/verify.sh` passes.
 
@@ -79,6 +80,8 @@ cd "$WORKSTATION_REPO"
 ```
 
 Use `--skip-codex` if this machine does not use Codex.
+
+The installer also creates a `pi` command alias to `gsd` when npm GSD does not publish a `pi` binary. This is needed because some extension runtimes still spawn `pi` directly.
 
 The installer also runs `scripts/patch-gsd-exports.py` by default. That idempotent local patch adds missing export-map entries needed by some community Pi extensions. Use `--skip-gsd-export-patch` only if you intentionally do not want the compatibility patch.
 
@@ -164,6 +167,15 @@ Rerun:
 ```
 
 If Codex prompts about hook trust in the TUI, use `/hooks` and trust the safety-net PreToolUse hook.
+
+### `verify.sh` says `pi` is missing
+
+Run the installer again so it can create the `pi -> gsd` alias:
+
+```bash
+./scripts/install.sh --project-repo "$PROJECT_REPO" --overwrite
+./scripts/verify.sh --project-repo "$PROJECT_REPO"
+```
 
 ### `verify.sh` says GSD/Pi exports need patching
 
