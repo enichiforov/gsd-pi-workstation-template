@@ -1,0 +1,9 @@
+# User-level Pi/GSD package sources
+# Install with: gsd install <source>
+
+git:github.com/hjanuschka/pi-multi-pass
+npm:pi-subagents
+npm:pi-lens
+npm:pi-simplify
+npm:@plannotator/pi-extension
+npm:@narumitw/pi-wait-what

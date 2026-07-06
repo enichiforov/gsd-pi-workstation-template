@@ -1,0 +1,19 @@
+# GSD/Pi workstation Codex defaults.
+# Copy or merge into ~/.codex/config.toml.
+
+approval_policy = "never"
+sandbox_mode = "danger-full-access"
+sandbox = "danger-full-access"
+model = "gpt-5.5"
+model_reasoning_effort = "xhigh"
+service_tier = "default"
+
+[features]
+plugin_hooks = true
+
+[marketplaces.cc-marketplace]
+source_type = "git"
+source = "https://github.com/kenryu42/cc-marketplace.git"
+
+[plugins."safety-net@cc-marketplace"]
+enabled = true
