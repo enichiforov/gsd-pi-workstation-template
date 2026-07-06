@@ -5,6 +5,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PROJECT_REPO="${PROJECT_REPO:-$HOME/YourProject}"
 OVERWRITE=0
 SKIP_CODEX=0
+SKIP_GSD_EXPORT_PATCH=0
 
 usage() {
   cat <<'USAGE'
@@ -14,8 +15,9 @@ Installs the GSD/Pi workstation profile on this Mac.
 
 Options:
   --project-repo PATH  Project checkout path (default: ~/YourProject)
-  --overwrite          Replace existing AGENTS/settings/template files when different
-  --skip-codex         Do not patch Codex config or install safety-net plugin
+  --overwrite              Replace existing AGENTS/settings/template files when different
+  --skip-codex             Do not patch Codex config or install safety-net plugin
+  --skip-gsd-export-patch  Do not patch GSD/Pi package exports for community extensions
 USAGE
 }
 
@@ -24,6 +26,7 @@ while [[ $# -gt 0 ]]; do
     --project-repo) PROJECT_REPO="$2"; shift 2 ;;
     --overwrite) OVERWRITE=1; shift ;;
     --skip-codex) SKIP_CODEX=1; shift ;;
+    --skip-gsd-export-patch) SKIP_GSD_EXPORT_PATCH=1; shift ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown argument: $1" >&2; usage >&2; exit 2 ;;
   esac
@@ -59,7 +62,22 @@ install_gsd_package() {
     echo "gsd package already registered: $source"
   else
     echo "installing gsd package: $source"
-    gsd install "$source"
+    local log_file
+    log_file="$(mktemp)"
+    if ! gsd install "$source" >"$log_file" 2>&1; then
+      cat "$log_file"
+      rm -f "$log_file"
+      echo "FAIL gsd install failed for: $source" >&2
+      exit 1
+    fi
+    cat "$log_file"
+    if grep -Fq "Failed to load extension" "$log_file"; then
+      rm -f "$log_file"
+      echo "FAIL extension load failure detected while installing: $source" >&2
+      echo "Try rerunning without --skip-gsd-export-patch, or inspect scripts/patch-gsd-exports.py." >&2
+      exit 1
+    fi
+    rm -f "$log_file"
   fi
 }
 
@@ -73,6 +91,10 @@ if [[ ! -d "$PROJECT_REPO" ]]; then
   echo "Project repo path does not exist: $PROJECT_REPO" >&2
   echo "Clone your project first or pass --project-repo PATH." >&2
   exit 1
+fi
+
+if [[ "$SKIP_GSD_EXPORT_PATCH" != "1" ]]; then
+  python3 "$ROOT/scripts/patch-gsd-exports.py"
 fi
 
 while IFS= read -r source; do

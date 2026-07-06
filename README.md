@@ -12,6 +12,7 @@ It captures a practical agentic development flow:
 - `/wait-what` pause/explain command
 - Codex destructive-command guard via `cc-safety-net`
 - generic `AGENTS.md` templates for user-level and project-level instructions
+- a small GSD/Pi npm export compatibility patch for community extensions
 
 This repo is intentionally public-safe. It contains no auth files, no API keys, no private project state, and no private runtime databases.
 
@@ -30,6 +31,8 @@ git clone https://github.com/enichiforov/gsd-pi-workstation-template ~/gsd-pi-wo
 cd ~/gsd-pi-workstation-template
 ./scripts/install.sh --project-repo ~/YourProject --overwrite
 ./scripts/verify.sh --project-repo ~/YourProject
+./scripts/check-public-safe.py
+./scripts/docker-smoke.sh
 ```
 
 Restart any open GSD/Pi/Codex sessions after installation.
@@ -77,6 +80,7 @@ Edit these before installing if your project needs different defaults:
 
 This template includes guardrails, but it does not make autonomous coding risk-free.
 
+- `scripts/install.sh` may patch local GSD/Pi npm package export maps so community extensions load cleanly. This is idempotent and local to the machine.
 - `cc-safety-net` blocks many destructive shell commands; it is not a sandbox or firewall.
 - Approval boundaries still matter for pushes, deployments, external services, secrets, and paid API behavior.
 - Keep private project facts, personal data, credentials, and runtime state out of public forks.

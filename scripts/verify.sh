@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PROJECT_REPO="${PROJECT_REPO:-$HOME/YourProject}"
 
 usage() {
@@ -37,6 +38,13 @@ require_file() {
 require_cmd gsd
 require_cmd npm
 require_cmd node
+require_cmd python3
+
+if ! python3 "$ROOT/scripts/patch-gsd-exports.py" --check; then
+  echo "FAIL GSD/Pi package exports need compatibility patching." >&2
+  echo "Run: $ROOT/scripts/install.sh --project-repo '$PROJECT_REPO' --overwrite" >&2
+  exit 1
+fi
 
 packages=(
   "git:github.com/hjanuschka/pi-multi-pass"

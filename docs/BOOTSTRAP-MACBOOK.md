@@ -10,6 +10,7 @@ After this checklist:
 - Your project has a project-level `AGENTS.md`.
 - Pi/GSD has `pi-subagents`, `pi-lens`, `pi-simplify`, Plannotator, `/wait-what`, and pi-multi-pass installed.
 - Codex has `cc-safety-net` configured as a destructive-command guard, if Codex is installed.
+- Community Pi extensions load without lifecycle `Failed to load extension` errors.
 - `scripts/verify.sh` passes.
 
 ## 0. Pick paths
@@ -79,10 +80,18 @@ cd "$WORKSTATION_REPO"
 
 Use `--skip-codex` if this machine does not use Codex.
 
+The installer also runs `scripts/patch-gsd-exports.py` by default. That idempotent local patch adds missing export-map entries needed by some community Pi extensions. Use `--skip-gsd-export-patch` only if you intentionally do not want the compatibility patch.
+
 ## 5. Verify
 
 ```bash
 ./scripts/verify.sh --project-repo "$PROJECT_REPO"
+```
+
+Optional Docker smoke test from this repo, useful before publishing changes:
+
+```bash
+./scripts/docker-smoke.sh
 ```
 
 Expected high-level result:
@@ -94,6 +103,7 @@ OK gsd package: npm:pi-lens
 OK gsd package: npm:pi-simplify
 OK gsd package: npm:@plannotator/pi-extension
 OK gsd package: npm:@narumitw/pi-wait-what
+GSD/Pi package exports already compatible or no patch needed
 OK npm extension packages
 OK safety-net blocks git reset --hard
 OK safety-net allows normal rg command
@@ -154,3 +164,12 @@ Rerun:
 ```
 
 If Codex prompts about hook trust in the TUI, use `/hooks` and trust the safety-net PreToolUse hook.
+
+### `verify.sh` says GSD/Pi exports need patching
+
+Run the installer again without `--skip-gsd-export-patch`:
+
+```bash
+./scripts/install.sh --project-repo "$PROJECT_REPO" --overwrite
+./scripts/verify.sh --project-repo "$PROJECT_REPO"
+```
