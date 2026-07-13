@@ -102,6 +102,29 @@ else
   echo "WARN codex not found; skipped Codex plugin verification"
 fi
 
+# Coding-workflow marketplace plugins ("how to write good code"), reproduced from
+# public git. Guard on a representative plugin; marketplace-agnostic so it holds
+# whether resolved as @claude-code-workflows (clone) or a pre-existing name.
+if command -v claude >/dev/null 2>&1; then
+  if claude plugin list 2>/dev/null | grep -Eq 'python-development@'; then
+    echo "OK Claude coding plugins present (python-development)"
+  else
+    echo "FAIL Claude coding plugins missing (run install.sh)" >&2
+    exit 1
+  fi
+else
+  echo "WARN claude not found; skipped Claude coding plugin verification"
+fi
+
+if command -v codex >/dev/null 2>&1; then
+  if codex plugin list 2>/dev/null | awk '/python-development@/ && /installed/{f=1} END{exit f?0:1}'; then
+    echo "OK Codex coding plugins present (python-development)"
+  else
+    echo "FAIL Codex coding plugins missing (run install.sh)" >&2
+    exit 1
+  fi
+fi
+
 if (cd "$HOME/.gsd/agent/npm" && npx cc-safety-net explain "git reset --hard" 2>/dev/null | grep -Fq 'Status: BLOCKED'); then
   echo "OK safety-net blocks git reset --hard"
 else

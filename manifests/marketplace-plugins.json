@@ -1,0 +1,48 @@
+{
+  "description": "Coding-workflow marketplace plugins ('how to write good code') reproduced from a public git marketplace. Installed for both Claude Code and Codex from the same source, so no third-party plugin code is vendored into this repo.",
+  "marketplace": {
+    "name": "claude-code-workflows",
+    "source": "wshobson/agents"
+  },
+  "claude_plugins": [
+    "agent-teams",
+    "api-scaffolding",
+    "backend-api-security",
+    "backend-development",
+    "business-analytics",
+    "cicd-automation",
+    "comprehensive-review",
+    "database-design",
+    "debugging-toolkit",
+    "developer-essentials",
+    "documentation-generation",
+    "framework-migration",
+    "llm-application-dev",
+    "observability-monitoring",
+    "performance-testing-review",
+    "protect-mcp",
+    "python-development",
+    "security-scanning",
+    "signed-audit-trails",
+    "tdd-workflows",
+    "ui-design",
+    "unit-testing"
+  ],
+  "codex_plugins": [
+    "agent-teams",
+    "backend-api-security",
+    "backend-development",
+    "comprehensive-review",
+    "debugging-toolkit",
+    "developer-essentials",
+    "llm-application-dev",
+    "observability-monitoring",
+    "performance-testing-review",
+    "protect-mcp",
+    "python-development",
+    "security-scanning",
+    "signed-audit-trails",
+    "tdd-workflows",
+    "unit-testing"
+  ]
+}

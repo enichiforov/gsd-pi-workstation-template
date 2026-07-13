@@ -6,6 +6,7 @@ PROJECT_REPO="${PROJECT_REPO:-$HOME/YourProject}"
 OVERWRITE=0
 SKIP_CODEX=0
 SKIP_GSD_EXPORT_PATCH=0
+SKIP_PLUGINS=0
 
 usage() {
   cat <<'USAGE'
@@ -18,6 +19,7 @@ Options:
   --overwrite              Replace existing AGENTS/settings/template files when different
   --skip-codex             Do not patch Codex config or install safety-net plugin
   --skip-gsd-export-patch  Do not patch GSD/Pi package exports for community extensions
+  --skip-plugins           Do not install coding-workflow marketplace plugins
 USAGE
 }
 
@@ -27,6 +29,7 @@ while [[ $# -gt 0 ]]; do
     --overwrite) OVERWRITE=1; shift ;;
     --skip-codex) SKIP_CODEX=1; shift ;;
     --skip-gsd-export-patch) SKIP_GSD_EXPORT_PATCH=1; shift ;;
+    --skip-plugins) SKIP_PLUGINS=1; shift ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown argument: $1" >&2; usage >&2; exit 2 ;;
   esac
@@ -78,6 +81,58 @@ install_gsd_package() {
       exit 1
     fi
     rm -f "$log_file"
+  fi
+}
+
+manifest_field() {
+  # $1 = python expression against the parsed manifest dict `d`
+  python3 -c "import json; d=json.load(open('$ROOT/manifests/marketplace-plugins.json')); print($1)"
+}
+
+install_coding_plugins() {
+  local manifest="$ROOT/manifests/marketplace-plugins.json"
+  if [[ ! -f "$manifest" ]]; then
+    echo "no manifests/marketplace-plugins.json; skipping coding-workflow plugins"
+    return 0
+  fi
+  local mp_source mp_name
+  mp_source="$(manifest_field "d['marketplace']['source']")"
+  mp_name="$(manifest_field "d['marketplace']['name']")"
+
+  # Claude Code coding plugins (git-native marketplace, no vendored plugin code).
+  if command -v claude >/dev/null 2>&1; then
+    claude plugin marketplace add "$mp_source" >/dev/null 2>&1 || true
+    local claude_installed
+    claude_installed="$(claude plugin list 2>/dev/null || true)"
+    while IFS= read -r name; do
+      [[ -z "$name" ]] && continue
+      if grep -Fq "${name}@${mp_name}" <<<"$claude_installed"; then
+        echo "claude plugin already installed: ${name}@${mp_name}"
+      else
+        echo "installing claude plugin: ${name}@${mp_name}"
+        claude plugin install "${name}@${mp_name}" >/dev/null 2>&1 \
+          || echo "WARN claude plugin install failed: ${name}@${mp_name}" >&2
+      fi
+    done < <(manifest_field "'\n'.join(d['claude_plugins'])")
+  else
+    echo "claude not found; skipped Claude coding plugins" >&2
+  fi
+
+  # Codex coding plugins — same public marketplace, resolved git-native.
+  if [[ "$SKIP_CODEX" != "1" ]] && command -v codex >/dev/null 2>&1; then
+    codex plugin marketplace add "$mp_source" >/dev/null 2>&1 || true
+    local codex_list
+    codex_list="$(codex plugin list 2>/dev/null || true)"
+    while IFS= read -r name; do
+      [[ -z "$name" ]] && continue
+      if awk -v p="${name}@${mp_name}" '$1==p && /installed/{f=1} END{exit f?0:1}' <<<"$codex_list"; then
+        echo "codex plugin already installed: ${name}@${mp_name}"
+      else
+        echo "installing codex plugin: ${name}@${mp_name}"
+        codex plugin add "${name}@${mp_name}" >/dev/null 2>&1 \
+          || echo "WARN codex plugin add failed: ${name}@${mp_name}" >&2
+      fi
+    done < <(manifest_field "'\n'.join(d['codex_plugins'])")
   fi
 }
 
@@ -184,6 +239,10 @@ if [[ "$SKIP_CODEX" != "1" ]]; then
   else
     echo "codex not found; skipped Codex safety-net config" >&2
   fi
+fi
+
+if [[ "$SKIP_PLUGINS" != "1" ]]; then
+  install_coding_plugins
 fi
 
 echo "Install complete. Start a fresh gsd/Pi session, then run scripts/verify.sh."
