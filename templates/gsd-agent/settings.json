@@ -1,6 +1,6 @@
 {
-  "defaultProvider": "openai-codex",
-  "defaultModel": "gpt-5.4-mini",
+  "defaultProvider": "claude-code",
+  "defaultModel": "claude-opus-4-8",
   "defaultThinkingLevel": "medium",
   "quietStartup": true,
   "collapseChangelog": true,
@@ -21,67 +21,67 @@
     "mode": "worktree"
   },
   "subagents": {
-    "defaultModel": "openai-codex/gpt-5.4-mini",
+    "defaultModel": "openai-codex/gpt-5.6-terra",
     "agentOverrides": {
       "scout": {
-        "model": "openai-codex/gpt-5.3-codex-spark",
-        "thinking": "medium",
+        "model": "openai-codex/gpt-5.6-luna",
+        "thinking": "low",
         "fallbackModels": [
-          "openai-codex/gpt-5.4-mini",
+          "openai-codex/gpt-5.6-terra",
           "claude-code/claude-haiku-4-5"
         ]
       },
       "worker": {
-        "model": "openai-codex/gpt-5.4-mini",
+        "model": "openai-codex/gpt-5.6-terra",
         "thinking": "medium",
         "fallbackModels": [
-          "openai-codex/gpt-5.3-codex-spark",
-          "openai-codex/gpt-5.4"
-        ]
-      },
-      "reviewer": {
-        "model": "openai-codex/gpt-5.4-mini",
-        "thinking": "medium",
-        "fallbackModels": [
-          "openai-codex/gpt-5.4",
+          "openai-codex/gpt-5.6-luna",
           "claude-code/claude-sonnet-5"
         ]
       },
+      "reviewer": {
+        "model": "openai-codex/gpt-5.6-terra",
+        "thinking": "medium",
+        "fallbackModels": [
+          "claude-code/claude-sonnet-5",
+          "openai-codex/gpt-5.6-sol"
+        ]
+      },
       "planner": {
-        "model": "openai-codex/gpt-5.5",
+        "model": "openai-codex/gpt-5.6-sol",
         "thinking": "xhigh",
         "fallbackModels": [
-          "openai-codex/gpt-5.4",
           "claude-code/claude-opus-4-8",
           "claude-code/claude-sonnet-5"
         ]
       },
       "oracle": {
-        "model": "openai-codex/gpt-5.5",
+        "model": "openai-codex/gpt-5.6-sol",
         "thinking": "xhigh",
         "fallbackModels": [
-          "openai-codex/gpt-5.4"
+          "claude-code/claude-opus-4-8"
         ]
       },
       "researcher": {
-        "model": "openai-codex/gpt-5.4-mini",
-        "thinking": "medium",
+        "model": "openai-codex/gpt-5.6-luna",
+        "thinking": "low",
         "fallbackModels": [
-          "openai-codex/gpt-5.4"
+          "openai-codex/gpt-5.6-terra",
+          "claude-code/claude-sonnet-5"
         ]
       },
       "context-builder": {
-        "model": "openai-codex/gpt-5.4-mini",
-        "thinking": "medium",
+        "model": "openai-codex/gpt-5.6-luna",
+        "thinking": "low",
         "fallbackModels": [
-          "openai-codex/gpt-5.4"
+          "openai-codex/gpt-5.6-terra"
         ]
       },
       "delegate": {
-        "model": "openai-codex/gpt-5.4-mini",
+        "model": "openai-codex/gpt-5.6-terra",
         "thinking": "medium",
         "fallbackModels": [
-          "openai-codex/gpt-5.4"
+          "openai-codex/gpt-5.6-luna"
         ]
       }
     }
@@ -94,9 +94,8 @@
     "claude-code/claude-opus-4-8",
     "claude-code/claude-sonnet-5",
     "claude-code/claude-haiku-4-5",
-    "openai-codex/gpt-5.5",
-    "openai-codex/gpt-5.4-mini",
-    "openai-codex/gpt-5.4",
-    "openai-codex/gpt-5.3-codex-spark"
+    "openai-codex/gpt-5.6-sol",
+    "openai-codex/gpt-5.6-terra",
+    "openai-codex/gpt-5.6-luna"
   ]
 }

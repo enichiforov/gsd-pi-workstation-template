@@ -160,6 +160,7 @@ fi
 install_file "$ROOT/templates/root/AGENTS.md" "$HOME/AGENTS.md"
 install_file "$ROOT/templates/project/AGENTS.md" "$PROJECT_REPO/AGENTS.md"
 install_file "$ROOT/templates/gsd-agent/settings.json" "$HOME/.gsd/agent/settings.json"
+install_file "$ROOT/templates/gsd-agent/models.json" "$HOME/.gsd/agent/models.json"
 install_file "$ROOT/templates/gsd-agent/multi-pass.json" "$HOME/.gsd/agent/multi-pass.json"
 
 # Let pi-subagents own the subagent tool if an older bundled extension exists.

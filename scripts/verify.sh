@@ -74,6 +74,7 @@ done
 require_file "$HOME/AGENTS.md"
 require_file "$PROJECT_REPO/AGENTS.md"
 require_file "$HOME/.gsd/agent/settings.json"
+require_file "$HOME/.gsd/agent/models.json"
 require_file "$HOME/.gsd/agent/multi-pass.json"
 
 if [[ -d "$HOME/.gsd/agent/npm" ]]; then

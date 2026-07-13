@@ -74,6 +74,7 @@ Edit these before installing if your project needs different defaults:
 - `templates/root/AGENTS.md`
 - `templates/project/AGENTS.md`
 - `templates/gsd-agent/settings.json`
+- `templates/gsd-agent/models.json`
 - `templates/gsd-agent/multi-pass.json`
 - `templates/codex/config.toml`
 
