@@ -51,6 +51,8 @@ Restart any open GSD/Pi/Codex sessions after installation.
 - portable `python-*` development skills from `templates/agents-skills/` into `~/.agents/skills/`
   ("how to write good code" — installed for both Claude Code and Codex from the
   public `wshobson/agents` marketplace; skip with `--skip-plugins`)
+- Claude Code GSD layer (33 `gsd-*` subagents + commands/skills) via `npm i -g get-shit-done-cc`
+  (pinned; not vendored — reproduced git-native from the public package; skip with `--skip-cc-gsd`)
 
 ## Included packages
 

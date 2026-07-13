@@ -7,6 +7,8 @@ OVERWRITE=0
 SKIP_CODEX=0
 SKIP_GSD_EXPORT_PATCH=0
 SKIP_PLUGINS=0
+SKIP_CC_GSD=0
+GSD_CC_VERSION="1.42.3"
 
 usage() {
   cat <<'USAGE'
@@ -20,6 +22,7 @@ Options:
   --skip-codex             Do not patch Codex config or install safety-net plugin
   --skip-gsd-export-patch  Do not patch GSD/Pi package exports for community extensions
   --skip-plugins           Do not install coding-workflow marketplace plugins
+  --skip-cc-gsd            Do not install the Claude Code GSD layer (get-shit-done-cc)
 USAGE
 }
 
@@ -30,6 +33,7 @@ while [[ $# -gt 0 ]]; do
     --skip-codex) SKIP_CODEX=1; shift ;;
     --skip-gsd-export-patch) SKIP_GSD_EXPORT_PATCH=1; shift ;;
     --skip-plugins) SKIP_PLUGINS=1; shift ;;
+    --skip-cc-gsd) SKIP_CC_GSD=1; shift ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown argument: $1" >&2; usage >&2; exit 2 ;;
   esac
@@ -210,6 +214,26 @@ if [[ -d "$HOME/.gsd/agent/npm" ]]; then
     @plannotator/pi-extension@0.22.0 \
     @narumitw/pi-wait-what@0.11.0 \
     cc-safety-net@1.0.6)
+fi
+
+# Install the Claude Code GSD layer (33 gsd-* subagents + commands/skills) from the
+# public npm package. Not vendored — reproduced git-native from the pinned version.
+# The installer is marker-managed and idempotent; --claude --global runs non-interactively.
+if [[ "$SKIP_CC_GSD" != "1" ]]; then
+  if command -v npm >/dev/null 2>&1; then
+    echo "installing Claude Code GSD layer (get-shit-done-cc@${GSD_CC_VERSION})"
+    npm install -g "get-shit-done-cc@${GSD_CC_VERSION}" >/dev/null 2>&1 \
+      || echo "WARN npm install -g get-shit-done-cc@${GSD_CC_VERSION} failed" >&2
+    if command -v get-shit-done-cc >/dev/null 2>&1; then
+      get-shit-done-cc --claude --global >/dev/null 2>&1 \
+        || echo "WARN get-shit-done-cc --claude --global failed" >&2
+      echo "Claude Code GSD agents installed to ~/.claude/agents"
+    else
+      echo "WARN get-shit-done-cc bin not found after install; skipped CC GSD layer" >&2
+    fi
+  else
+    echo "npm not found; skipped Claude Code GSD layer" >&2
+  fi
 fi
 
 install_file "$ROOT/templates/root/AGENTS.md" "$HOME/AGENTS.md"

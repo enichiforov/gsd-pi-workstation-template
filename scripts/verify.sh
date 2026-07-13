@@ -145,6 +145,25 @@ for skill in "${required_skills[@]}"; do
   fi
 done
 
+# Claude Code GSD layer (get-shit-done-cc). Guard on canonical subagents. If the
+# agents dir is absent, the layer was skipped (--skip-cc-gsd) or this is not a CC
+# machine — WARN and continue. If it exists, a missing canonical agent means a
+# broken install → FAIL.
+cc_agents_dir="$HOME/.claude/agents"
+required_cc_agents=(gsd-planner gsd-executor gsd-verifier)
+if [[ -d "$cc_agents_dir" ]]; then
+  for agent in "${required_cc_agents[@]}"; do
+    if [[ -f "$cc_agents_dir/$agent.md" ]]; then
+      echo "OK Claude Code GSD agent: $agent"
+    else
+      echo "FAIL missing Claude Code GSD agent: $cc_agents_dir/$agent.md (run install.sh)" >&2
+      exit 1
+    fi
+  done
+else
+  echo "WARN $cc_agents_dir not present; skipped Claude Code GSD layer verification"
+fi
+
 if (cd "$HOME/.gsd/agent/npm" && npx cc-safety-net explain "git reset --hard" 2>/dev/null | grep -Fq 'Status: BLOCKED'); then
   echo "OK safety-net blocks git reset --hard"
 else
