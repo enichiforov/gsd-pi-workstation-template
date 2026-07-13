@@ -125,6 +125,26 @@ if command -v codex >/dev/null 2>&1; then
   fi
 fi
 
+skills_dir="$HOME/.agents/skills"
+required_skills=(
+  python-architecture-patterns
+  python-async-concurrency-deep-dive
+  python-code-quality-fundamentals
+  python-database-patterns
+  python-debugging-and-observability
+  python-environment-and-config
+  python-performance-optimization
+  python-testing-and-mocks
+)
+for skill in "${required_skills[@]}"; do
+  if [[ -f "$skills_dir/$skill/SKILL.md" ]]; then
+    echo "OK agent skill: $skill"
+  else
+    echo "FAIL missing agent skill: $skills_dir/$skill/SKILL.md" >&2
+    exit 1
+  fi
+done
+
 if (cd "$HOME/.gsd/agent/npm" && npx cc-safety-net explain "git reset --hard" 2>/dev/null | grep -Fq 'Status: BLOCKED'); then
   echo "OK safety-net blocks git reset --hard"
 else

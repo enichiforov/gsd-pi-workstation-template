@@ -218,6 +218,17 @@ install_file "$ROOT/templates/gsd-agent/settings.json" "$HOME/.gsd/agent/setting
 install_file "$ROOT/templates/gsd-agent/models.json" "$HOME/.gsd/agent/models.json"
 install_file "$ROOT/templates/gsd-agent/multi-pass.json" "$HOME/.gsd/agent/multi-pass.json"
 
+# Install portable python-* development skills into the agent skills dir.
+# These live in ~/.agents/skills, are not in any npm package, and do not
+# survive a fresh machine unless vendored here.
+if [[ -d "$ROOT/templates/agents-skills" ]]; then
+  for skill_md in "$ROOT"/templates/agents-skills/*/SKILL.md; do
+    [[ -e "$skill_md" ]] || continue
+    skill_name="$(basename "$(dirname "$skill_md")")"
+    install_file "$skill_md" "$HOME/.agents/skills/$skill_name/SKILL.md"
+  done
+fi
+
 # Let pi-subagents own the subagent tool if an older bundled extension exists.
 if [[ -d "$HOME/.gsd/agent/extensions/subagent" ]]; then
   mkdir -p "$HOME/.gsd/agent/extensions-disabled"

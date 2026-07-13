@@ -48,6 +48,7 @@ Restart any open GSD/Pi/Codex sessions after installation.
 - pinned npm extension packages from `manifests/agent-npm-package.json`
 - Codex `cc-safety-net` plugin configuration, when Codex is installed
 - coding-workflow marketplace plugins from `manifests/marketplace-plugins.json`
+- portable `python-*` development skills from `templates/agents-skills/` into `~/.agents/skills/`
   ("how to write good code" — installed for both Claude Code and Codex from the
   public `wshobson/agents` marketplace; skip with `--skip-plugins`)
 
