@@ -17,6 +17,12 @@
 |---|---|
 | `cc-safety-net` / `safety-net@cc-marketplace` | PreToolUse guard for destructive git/filesystem commands. Blocks commands like `git reset --hard`; allows normal read/test commands. |
 
+## Knowledge-graph tool
+
+| Tool | Role | Why it is included |
+|---|---|---|
+| `graphify` (`/graphify` skill) | Any folder → navigable knowledge graph | Maps unfamiliar codebases and mixed corpora (code/docs/papers/images/video), surfaces cross-document connections via community detection, and persists an auditable graph in `graphify-out/graph.json`. Complements `pi-lens` (precise structural queries) with cross-cutting, session-surviving context. Reference-installed from the public `graphifyy` PyPI package — not vendored. See [`GRAPHIFY.md`](GRAPHIFY.md). |
+
 ## Deliberately not included
 
 - Persistent memory plugins: avoid a second memory authority until you have a memory governance plan.

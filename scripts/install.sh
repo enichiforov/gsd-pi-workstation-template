@@ -8,7 +8,9 @@ SKIP_CODEX=0
 SKIP_GSD_EXPORT_PATCH=0
 SKIP_PLUGINS=0
 SKIP_CC_GSD=0
+SKIP_GRAPHIFY=0
 GSD_CC_VERSION="1.42.3"
+GRAPHIFY_PLATFORMS=(claude codex pi)
 
 usage() {
   cat <<'USAGE'
@@ -23,6 +25,7 @@ Options:
   --skip-gsd-export-patch  Do not patch GSD/Pi package exports for community extensions
   --skip-plugins           Do not install coding-workflow marketplace plugins
   --skip-cc-gsd            Do not install the Claude Code GSD layer (get-shit-done-cc)
+  --skip-graphify          Do not install the graphify knowledge-graph CLI/skill
 USAGE
 }
 
@@ -34,6 +37,7 @@ while [[ $# -gt 0 ]]; do
     --skip-gsd-export-patch) SKIP_GSD_EXPORT_PATCH=1; shift ;;
     --skip-plugins) SKIP_PLUGINS=1; shift ;;
     --skip-cc-gsd) SKIP_CC_GSD=1; shift ;;
+    --skip-graphify) SKIP_GRAPHIFY=1; shift ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown argument: $1" >&2; usage >&2; exit 2 ;;
   esac
@@ -138,6 +142,46 @@ install_coding_plugins() {
       fi
     done < <(manifest_field "'\n'.join(d['codex_plugins'])")
   fi
+}
+
+install_graphify() {
+  # Reference-install the graphify knowledge-graph CLI + skill. No third-party
+  # code is vendored into this repo: the CLI comes from the public PyPI package
+  # `graphifyy` (double-y; the command stays `graphify`) and `graphify install`
+  # copies the skill into each assistant's config dir. Idempotent.
+  if command -v graphify >/dev/null 2>&1; then
+    echo "graphify CLI already installed: $(command -v graphify)"
+  elif command -v uv >/dev/null 2>&1; then
+    echo "installing graphify CLI via uv tool install graphifyy"
+    uv tool install graphifyy >/dev/null 2>&1 \
+      || { echo "WARN uv tool install graphifyy failed; skipping graphify" >&2; return 0; }
+  elif command -v pipx >/dev/null 2>&1; then
+    echo "installing graphify CLI via pipx install graphifyy"
+    pipx install graphifyy >/dev/null 2>&1 \
+      || { echo "WARN pipx install graphifyy failed; skipping graphify" >&2; return 0; }
+  else
+    echo "WARN neither uv nor pipx found; skipping graphify (install uv: https://astral.sh/uv)" >&2
+    return 0
+  fi
+
+  if ! command -v graphify >/dev/null 2>&1; then
+    # uv/pipx installs land in a bin dir that may not be on this shell's PATH yet.
+    echo "WARN graphify installed but not on PATH; open a new shell, then run: graphify install" >&2
+    return 0
+  fi
+
+  # Register the skill for each assistant this workstation targets. Skip codex
+  # registration when --skip-codex was passed.
+  for platform in "${GRAPHIFY_PLATFORMS[@]}"; do
+    if [[ "$platform" == "codex" && "$SKIP_CODEX" == "1" ]]; then
+      continue
+    fi
+    if graphify install --platform "$platform" >/dev/null 2>&1; then
+      echo "graphify skill registered for: $platform"
+    else
+      echo "WARN graphify install --platform $platform failed" >&2
+    fi
+  done
 }
 
 ensure_pi_command() {
@@ -278,6 +322,10 @@ fi
 
 if [[ "$SKIP_PLUGINS" != "1" ]]; then
   install_coding_plugins
+fi
+
+if [[ "$SKIP_GRAPHIFY" != "1" ]]; then
+  install_graphify
 fi
 
 echo "Install complete. Start a fresh gsd/Pi session, then run scripts/verify.sh."

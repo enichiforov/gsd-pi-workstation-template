@@ -164,6 +164,20 @@ else
   echo "WARN $cc_agents_dir not present; skipped Claude Code GSD layer verification"
 fi
 
+# graphify knowledge-graph CLI/skill is a reference-install (optional uv/pipx
+# tooling), so a missing CLI is a WARN, not a FAIL. When present, confirm the
+# skill was registered for Claude Code.
+if command -v graphify >/dev/null 2>&1; then
+  echo "OK graphify CLI: $(command -v graphify)"
+  if [[ -f "$HOME/.claude/skills/graphify/SKILL.md" ]]; then
+    echo "OK graphify skill registered (claude)"
+  else
+    echo "WARN graphify CLI present but skill not registered; run: graphify install"
+  fi
+else
+  echo "WARN graphify not found; run install.sh (needs uv or pipx) or skip with --skip-graphify"
+fi
+
 if (cd "$HOME/.gsd/agent/npm" && npx cc-safety-net explain "git reset --hard" 2>/dev/null | grep -Fq 'Status: BLOCKED'); then
   echo "OK safety-net blocks git reset --hard"
 else

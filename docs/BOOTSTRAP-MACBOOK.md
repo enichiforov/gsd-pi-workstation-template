@@ -10,6 +10,7 @@ After this checklist:
 - Your project has a project-level `AGENTS.md`.
 - Pi/GSD has `pi-subagents`, `pi-lens`, `pi-simplify`, Plannotator, `/wait-what`, and pi-multi-pass installed.
 - Codex has `cc-safety-net` configured as a destructive-command guard, if Codex is installed.
+- graphify knowledge-graph CLI + `/graphify` skill are installed (when `uv` or `pipx` is present).
 - `pi` is available as a CLI alias to `gsd` for extension runtimes that spawn `pi`.
 - Community Pi extensions load without lifecycle `Failed to load extension` errors.
 - `scripts/verify.sh` passes.
@@ -29,12 +30,13 @@ xcode-select --install || true
 # Homebrew, if missing:
 # /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
-brew install git gh node python || true
+brew install git gh node python uv || true
 node --version
 npm --version
 git --version
 gh --version
 python3 --version
+uv --version   # needed for the graphify reference-install (or install pipx)
 ```
 
 Install GSD/Pi if missing:
@@ -126,6 +128,7 @@ Useful commands/tools after reload:
 - `read_symbol`
 - `lsp_diagnostics`
 - `lens_diagnostics`
+- `/graphify` (knowledge-graph build/query; see [`GRAPHIFY.md`](GRAPHIFY.md))
 
 ## 7. First smoke test
 
@@ -185,3 +188,16 @@ Run the installer again without `--skip-gsd-export-patch`:
 ./scripts/install.sh --project-repo "$PROJECT_REPO" --overwrite
 ./scripts/verify.sh --project-repo "$PROJECT_REPO"
 ```
+
+### `verify.sh` warns that graphify is not found
+
+graphify is a reference-install and needs `uv` or `pipx`. Install `uv`, then
+rerun the installer, or install manually:
+
+```bash
+brew install uv                # or: pipx ensurepath
+uv tool install graphifyy      # the command stays `graphify`
+graphify install               # registers the /graphify skill
+```
+
+Skip graphify entirely with `./scripts/install.sh ... --skip-graphify`.
