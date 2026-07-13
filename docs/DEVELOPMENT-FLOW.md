@@ -14,6 +14,18 @@ For a GSD project, start with:
 
 Avoid putting large project facts directly into always-on prompts. Use docs, memory, code retrieval, and skills for the right kind of context.
 
+## Onboarding an unfamiliar codebase
+
+Before broad reads, build a knowledge graph and query it:
+
+1. `/graphify` (or `/graphify <path>`) to map the repo into `graphify-out/`.
+2. Read the `GRAPH_REPORT.md` god nodes and surprising connections for the shape.
+3. `/graphify query "<question>"` to trace concepts across community boundaries.
+4. `/graphify <path> --update` after changes to re-extract only what changed.
+
+Use this for cross-cutting understanding; use `pi-lens` (below) for precise
+structural queries. See [`GRAPHIFY.md`](GRAPHIFY.md).
+
 ## Coding flow
 
 For non-trivial code edits:

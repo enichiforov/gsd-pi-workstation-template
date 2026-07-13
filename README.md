@@ -53,6 +53,8 @@ Restart any open GSD/Pi/Codex sessions after installation.
   public `wshobson/agents` marketplace; skip with `--skip-plugins`)
 - Claude Code GSD layer (33 `gsd-*` subagents + commands/skills) via `npm i -g get-shit-done-cc`
   (pinned; not vendored — reproduced git-native from the public package; skip with `--skip-cc-gsd`)
+- graphify knowledge-graph CLI + `/graphify` skill via `uv tool install graphifyy` (or `pipx`),
+  registered for Claude Code, Codex, and Pi (reference-install, not vendored; skip with `--skip-graphify`)
 
 ## Included packages
 
@@ -65,12 +67,14 @@ Restart any open GSD/Pi/Codex sessions after installation.
 | `@narumitw/pi-wait-what` | `/wait-what` pause and explain command |
 | `pi-multi-pass` | provider pooling/fallback configuration |
 | `cc-safety-net` | Codex hook for destructive git/filesystem command blocking |
+| `graphify` | knowledge-graph tool: any folder (code/docs/papers/images/video) → navigable graph + `/graphify` skill |
 
 ## Docs
 
 - [`docs/BOOTSTRAP-MACBOOK.md`](docs/BOOTSTRAP-MACBOOK.md) — full fresh-machine checklist
 - [`docs/PLUGIN-INVENTORY.md`](docs/PLUGIN-INVENTORY.md) — why each plugin is included
 - [`docs/DEVELOPMENT-FLOW.md`](docs/DEVELOPMENT-FLOW.md) — recommended coding flow
+- [`docs/GRAPHIFY.md`](docs/GRAPHIFY.md) — knowledge-graph tool: install, usage, and when to reach for it
 - [`docs/SECURITY.md`](docs/SECURITY.md) — what not to commit and how safety-net fits
 
 ## Customize
