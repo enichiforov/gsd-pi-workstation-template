@@ -50,11 +50,13 @@ python3 -m unittest discover -s tests -v >/tmp/tests.log 2>&1
 python3 scripts/check-public-safe.py >/tmp/public-safe.log
 ./scripts/install.sh \
   --profile developer \
+  --include python-skills \
   --exclude codex \
   --project-repo /tmp/dummy-project \
   --overwrite >/tmp/install.log 2>&1
 ./scripts/verify.sh \
   --profile developer \
+  --include python-skills \
   --exclude codex \
   --project-repo /tmp/dummy-project >/tmp/verify.log 2>&1
 load_failures=$(grep -c "Failed to load extension" /tmp/install.log || true)

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Python Async and Concurrency"
+  short_description: "Build and debug reliable Python concurrency"
+  default_prompt: "Use $python-async-concurrency-deep-dive to diagnose and fix this asyncio or concurrency problem with explicit ownership and cancellation."

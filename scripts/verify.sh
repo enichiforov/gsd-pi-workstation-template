@@ -261,11 +261,11 @@ if has_component marketplace; then
 fi
 
 if has_component python-skills; then
-  for skill_md in "$ROOT"/templates/agents-skills/*/SKILL.md; do
-    [[ -e "$skill_md" ]] || continue
-    skill_name="$(basename "$(dirname "$skill_md")")"
-    require_file "$HOME/.agents/skills/$skill_name/SKILL.md"
-  done
+  python3 "$ROOT/scripts/python-skills.py" \
+    --manifest "$ROOT/manifests/python-skills.json" \
+    --source "$ROOT/templates/agents-skills" \
+    verify \
+    --destination "$HOME/.agents/skills"
 fi
 
 if has_component claude-gsd; then

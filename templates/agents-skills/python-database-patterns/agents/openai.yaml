@@ -1,0 +1,4 @@
+interface:
+  display_name: "Python Database Patterns"
+  short_description: "Design reliable SQLAlchemy persistence layers"
+  default_prompt: "Use $python-database-patterns to design the transaction, repository, SQLAlchemy, loading, and migration boundaries."

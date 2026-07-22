@@ -1,0 +1,4 @@
+interface:
+  display_name: "Python Environment and Config"
+  short_description: "Make Python config and process launch reliable"
+  default_prompt: "Use $python-environment-and-config to make this Python configuration, import, path, environment, or subprocess behavior deterministic."

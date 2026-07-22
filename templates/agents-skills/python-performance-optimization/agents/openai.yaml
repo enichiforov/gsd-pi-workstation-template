@@ -1,0 +1,4 @@
+interface:
+  display_name: "Python Performance Optimization"
+  short_description: "Profile and optimize Python with evidence"
+  default_prompt: "Use $python-performance-optimization to measure this workload, find the bottleneck, and verify a safe optimization."

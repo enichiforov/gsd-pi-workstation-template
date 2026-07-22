@@ -1,0 +1,4 @@
+interface:
+  display_name: "Python Architecture Patterns"
+  short_description: "Design clear Python application boundaries"
+  default_prompt: "Use $python-architecture-patterns to design cohesive use-case, port, adapter, transaction, and composition boundaries."

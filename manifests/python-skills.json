@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "bundle_version": "2026.07.22",
+  "source_provenance": {
+    "channel": "advice17",
+    "url": "https://t.me/s/advice17",
+    "retrieved_at_utc": "2026-07-22T19:55:45.736977+00:00",
+    "corpus_sha256": "14ef4ea7d09e7ce92cc848f1d72b7128c56cb3d83d80b533e64ed46d5aad38a0",
+    "raw_corpus_distributed": false
+  },
+  "skills": [
+    {
+      "name": "python-architecture-patterns",
+      "files": {
+        "SKILL.md": "108e5e9c5ff1b603d3ca513a0fd439118e744320be02124bdca060948d20395c",
+        "agents/openai.yaml": "821c3a1d153f02627078fecdafecf6dcccbce81c12b2714e18c4c173f67dd924",
+        "references/advice17-source-map.md": "9b55f392bbf0cedfc27a8da61744d6f8b26a9ec777dc1ec1b87a6fe8827302cc",
+        "references/application-boundaries.md": "024f20df5548c181104984ed26156e497e6347c50212fbdb9231ce8ba0dfbb51",
+        "references/dependency-composition.md": "fdc23e28eeec710f56e02a64b6a25432718f62c88ad2bdd6ebd51ae29e1ce1a3"
+      }
+    },
+    {
+      "name": "python-async-concurrency-deep-dive",
+      "files": {
+        "SKILL.md": "ac049a02c0e846e278518fed2b2040fa43cc2f532b436a7f180296755a968f3d",
+        "agents/openai.yaml": "ef977bd1d3b972d9c7832ee8bc220c45a90641e467fd8acbe90aef1f87919593",
+        "references/advice17-source-map.md": "8d501ece2443753f2f74b81842e0da3d281de867014e4e47bb55ebc3bd9ce92b",
+        "references/asyncio-diagnostics.md": "b627ac395f015f707d550683c00878a18f604df33c52697543d1f97da7c0be1a",
+        "references/concurrency-models.md": "3a0e3bab1b24d2f96d671521fc44dd7793c3a4e49a4c3d7bdb8954ca9dff8af7"
+      }
+    },
+    {
+      "name": "python-authentication-and-authorization",
+      "files": {
+        "SKILL.md": "3a577eff64174bab6df12289d6978556a0004e498d9e287a97cb3e2b9cb93db9",
+        "agents/openai.yaml": "362d6e0c16d02d58c65a5bb00541b4f0a8b40189434366d45db833e9de0a9f61",
+        "references/advice17-source-map.md": "c2051138a5832d5e175610ef2da4a0def02819ddc014272511614869a16cb9b9",
+        "references/auth-boundaries.md": "cb6f6eda3849c6a9c70f1f9389e5e63ce868b94d73a0c6ebfcad2fa9f1ff5f73",
+        "references/authentication-mechanisms.md": "0f4a4e3cb45e8d52a96a7e7850387fefd0afc5c9d654ab5dcce123660f38d676",
+        "references/authorization-models.md": "a3bd18da841137fd863d6ba76e45388f1653383669d43ce45cca6ed49a3545ee",
+        "references/jwt-validation.md": "94d7b9ae9c1b88a6198f26d02f4b9d51feef0cb7b38966d476a659dd1974e3de",
+        "references/session-and-token-checklist.md": "459032991f495a4ad6cb73207a56aff3c2e611b3fdd32961c23c8f97aa27ff75"
+      }
+    },
+    {
+      "name": "python-code-quality-fundamentals",
+      "files": {
+        "SKILL.md": "4be0fe5744e9f14998e538cd00fe8baed1528decea0833cf05cfec5b5b787cd7",
+        "agents/openai.yaml": "febb7ba1aa486745adb03f3be4bf685d7c17a8236cf92a2036dbac2816c880b5",
+        "references/advice17-source-map.md": "6ca2309c9e9b409cba1af1e8d23bdec5e487f213329cf0c31339785f30f182ec",
+        "references/python-language-design.md": "6b007eca320a7931a52ad12e7fbc963804fc17a7d5f35282eae4fda5ac64c02d"
+      }
+    },
+    {
+      "name": "python-database-patterns",
+      "files": {
+        "SKILL.md": "0c212af740764aa6a87701682a30c30afabac7dd981c9245a1d7edd91116a127",
+        "agents/openai.yaml": "5f63284bb5403c07c4864485db2998f3b1dcb85ea8a9a10c80c345343c086b37",
+        "references/advice17-source-map.md": "9f0ff233286908a190f2c1c5312703a9e220e965d9b6e6ed056f684d6e7db880",
+        "references/data-access-patterns.md": "b1afa2180007c16b9f91b951753f7745ece97f52a47a44e2d9cd4a96bf1908a7",
+        "references/migrations.md": "5553f3f423f1c3aa31fe553db4edc02162ed3f0146425a7fad5390040613dfc5",
+        "references/transactions-and-loading.md": "19a833117fafdf47324686bb4127dab2cef00b42b1b4eb003b27109560f818a7"
+      }
+    },
+    {
+      "name": "python-debugging-and-observability",
+      "files": {
+        "SKILL.md": "f302fdd1cbd6c840f6778512b56f63dda60c102737b65a80acd3f88673a58fd6",
+        "agents/openai.yaml": "dfa16516bad2028c9fcef25195bd11514b20e3e6dd99f8598a74eb28b46ff3b5",
+        "references/advice17-source-map.md": "6a9fff8bc0706ca7822471cc0f5155bb9e908d4dc91a6974cdad09f46108da66",
+        "references/debugging-workflow.md": "cf3f75963b0653692a26dc774b0b561c08de2ced1ca0070a1d87342da0b2ab3a",
+        "references/observability-and-errors.md": "1a1fd3e666a078c9198a78e01b19ac62a5206a97f3991328c929c5fa4c2443b8"
+      }
+    },
+    {
+      "name": "python-environment-and-config",
+      "files": {
+        "SKILL.md": "bcf544cafaf10320cbac3d39347dad3cbd060e0ef8552daf0b209e18153f990c",
+        "agents/openai.yaml": "8b7bc2c716d93bbcf6dc9fcaf970941b5361c36d92ee2c61833edf6a427a5f09",
+        "references/advice17-source-map.md": "88fddbf3326cbe3b248d71aef5e94bac2d81fa6d02aa53aac08047023db39721",
+        "references/configuration-and-packaging.md": "6176857113af1134ef2f332443206e8b9d721c5b13f35e3708ca76faf5ee73a5",
+        "references/process-execution.md": "d98c0ca7d028cc99232a563b4a247ed9d0e7e400d0b53663071478479cbecba1"
+      }
+    },
+    {
+      "name": "python-performance-optimization",
+      "files": {
+        "SKILL.md": "af44162481c25ad6528d890431f735bae325895e703a1e19833e1f1c5f1734cd",
+        "agents/openai.yaml": "253f63948c6ff3998148284732211c5b24b483fa762448bee23434c9e638c29f",
+        "references/advice17-source-map.md": "feb3aec8e286ca0f490e67262a5ac38b86857c723f6f8531b537fbfc3f2690a1",
+        "references/profiling-workflow.md": "05bba4f12a915818a2b09f60ecd3f3ce31c5cc22c399b4e596611be4968d3848",
+        "references/python-performance-decisions.md": "62171e1fd3b17c0108aa5fe7772d1cca79cd1c0bdbe2b85bff6897378fae2517"
+      }
+    },
+    {
+      "name": "python-testing-and-mocks",
+      "files": {
+        "SKILL.md": "400d4cd1d351ce156037664100ee63e2df7af5fa845e33f904af8c2175885cbb",
+        "agents/openai.yaml": "a187a72b61cc111cd0f6f4f19856aa27a4540a9d56b7dd49681d8357750fd5e2",
+        "references/advice17-source-map.md": "1f98011605190020a26a304d7121f29dc49b3c8e97c13126b38673166d8e9ed8",
+        "references/agent-tests.md": "6dbcc9304d62c990f579f011f52dde614bf0b2b09a6f9457eef92e805728eac7",
+        "references/async-tests.md": "2518149de1814e50f6b69f8414ca95be60d825a4802b7a7bb6a714585b0ce309",
+        "references/database-and-migrations.md": "120e580afe017f18bd3261dd29033e0d98a33d8749fc339c27f36a3fc9964bbc",
+        "references/pytest-fixtures-and-doubles.md": "75ba443d35572860ed1b0c03d5b98429706954d34f4478bf0eba11fbedacc017"
+      }
+    },
+    {
+      "name": "python-web-service-runtime",
+      "files": {
+        "SKILL.md": "f62cd102afb2096ec3d185539eb455e15ce068aeb7b81c1de57a29f4a463bc52",
+        "agents/openai.yaml": "6cbd3319345e4882c3bf35c69aa300c65c5bfdd91a08b1bb78b84b0ddbb5b994",
+        "references/advice17-source-map.md": "18d1fbca3778198d5e501101460207711d2726acf1af547f2411128ed482801f",
+        "references/fastapi-boundary.md": "37cf8589e348fcfd0b10e5e6dae73608d66bb8631273d0da0f9ef841dd62db9f",
+        "references/runtime-topology.md": "b8992e3cb9d428a5fc988b59b92f70b62935863af67fbce54579e07e511710d2",
+        "references/stateless-and-workers.md": "792d74110b4b8f10689ce4256c292f94ee99c3ec7ee4fb9658a29c124c28cab8"
+      }
+    }
+  ]
+}

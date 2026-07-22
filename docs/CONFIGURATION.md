@@ -58,7 +58,7 @@ The default. It adds:
 | `codex` | autonomous Codex config and project trust | `codex-safety-net` |
 | `marketplace` | curated coding plugins for available Claude/Codex CLIs | `core` |
 | `claude-gsd` | pinned `get-shit-done-cc` global Claude layer | `core` |
-| `python-skills` | vendored `python-*` skills under `~/.agents/skills` | `core` |
+| `python-skills` | hash-verified 10-skill trees under `~/.agents/skills` | `core` |
 | `graphify` | pinned Graphify CLI and assistant skill registrations | `core` |
 
 The canonical definitions and package mapping are in `manifests/components.json`.
@@ -96,6 +96,11 @@ The installer is idempotent:
 - a different existing destination is preserved by default;
 - `--overwrite` backs it up before replacement.
 
+Python skills are managed at directory granularity because `SKILL.md`, `references/`, and
+`agents/openai.yaml` form one contract. A different installed skill is skipped as a whole unless
+`--overwrite` is supplied. Overwrite backs up and atomically replaces the entire skill directory
+so old and new references cannot be mixed.
+
 Codex config is merged by `scripts/patch-codex-config.py`; unrelated root keys and tables are
 preserved. Because the default autonomy settings are security-sensitive, Codex config is patched
 only after safety-net installation and its destructive-command self-test pass.
@@ -105,6 +110,8 @@ only after safety-net installation and its destructive-command self-test pass.
 - `manifests/components.json`: profile/component graph and selected GSD package sources;
 - `manifests/pinned-inventory.json`: exact npm/PyPI versions and Git refs;
 - `manifests/marketplace-plugins.json`: curated plugin names and pinned marketplace ref;
+- `manifests/python-skills.json`: exact skill names, bundle version, source provenance, relative
+  file inventory, and SHA-256 hashes;
 - `manifests/gsd-packages.txt`: compatibility/human-readable view of pinned GSD sources.
 
 `compatibility-patch` runs before community extensions are loaded. It first detects whether a

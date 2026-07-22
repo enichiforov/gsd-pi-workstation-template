@@ -1,0 +1,4 @@
+interface:
+  display_name: "Python Authentication and Authorization"
+  short_description: "Design secure identity and access boundaries"
+  default_prompt: "Use $python-authentication-and-authorization to design explicit authentication and object-level authorization boundaries."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Python Web Service Runtime"
+  short_description: "Design restart-safe Python service runtimes"
+  default_prompt: "Use $python-web-service-runtime to design a restart-safe, horizontally scalable Python service runtime."

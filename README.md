@@ -20,7 +20,7 @@ checks. No credentials, auth files, private prompts, or project data belong in t
 - managed GSD settings, models, and multi-pass configuration;
 - fail-closed Codex safety-net installation before autonomous settings;
 - optional coding-workflow marketplaces for Claude Code and Codex;
-- optional `get-shit-done-cc`, Python engineering skills, and Graphify;
+- optional `get-shit-done-cc`, a hash-verified 10-skill Python engineering bundle, and Graphify;
 - dry-run planning, component overrides, idempotent file installation, and backups;
 - profile-aware verification and a public-safety scanner.
 
@@ -99,7 +99,8 @@ Depending on the selected components, installation may update:
 - `~/.gsd/agent/npm/` and GSD package registration;
 - `~/.codex/config.toml` and Codex plugin state;
 - `~/.claude/` when Claude components are selected;
-- `~/.agents/skills/` for portable Python skills;
+- `~/.agents/skills/` for complete portable Python skill trees, including references and
+  `agents/openai.yaml` metadata;
 - the user `uv`/`pipx` tool environment for Graphify.
 
 Existing managed template files are preserved unless `--overwrite` is passed. Before replacement,
@@ -108,6 +109,10 @@ the installer copies them to:
 ```text
 ${XDG_STATE_HOME:-~/.local/state}/gsd-pi-workstation/backups/<run-id>/
 ```
+
+Each Python skill is managed as one coherent directory. Without `--overwrite`, a different
+existing skill is skipped in full; with `--overwrite`, its complete directory is backed up and
+atomically replaced.
 
 The last successful selection is recorded in `last-install.txt` under the same state directory.
 Package/plugin operations are intentionally not auto-rolled back; configuration-file backups make
@@ -142,6 +147,7 @@ docs/        configuration, security, workflow, and troubleshooting guides
 ```bash
 python3 -m unittest discover -s tests -v
 bash -n scripts/*.sh
+python3 scripts/python-skills.py validate
 python3 scripts/check-public-safe.py
 ./scripts/install.sh --profile full --dry-run --project-repo /tmp/example
 ```

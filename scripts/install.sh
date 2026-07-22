@@ -262,12 +262,18 @@ install_workspace_config() {
 }
 
 install_python_skills() {
-  local skill_md skill_name
-  for skill_md in "$ROOT"/templates/agents-skills/*/SKILL.md; do
-    [[ -e "$skill_md" ]] || continue
-    skill_name="$(basename "$(dirname "$skill_md")")"
-    install_file "$skill_md" "$HOME/.agents/skills/$skill_name/SKILL.md"
-  done
+  local args=(
+    "$ROOT/scripts/python-skills.py"
+    --manifest "$ROOT/manifests/python-skills.json"
+    --source "$ROOT/templates/agents-skills"
+    install
+    --destination "$HOME/.agents/skills"
+    --backup-root "$BACKUP_DIR"
+  )
+  if [[ "$OVERWRITE" == "1" ]]; then
+    args+=(--overwrite)
+  fi
+  python3 "${args[@]}"
 }
 
 install_claude_gsd() {

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Python Debugging and Observability"
+  short_description: "Debug Python with actionable observability"
+  default_prompt: "Use $python-debugging-and-observability to reproduce, diagnose, fix, and instrument this Python failure."

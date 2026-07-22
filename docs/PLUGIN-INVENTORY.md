@@ -4,7 +4,8 @@ The machine-readable source of truth is split deliberately:
 
 - `manifests/components.json` maps packages to selectable components;
 - `manifests/pinned-inventory.json` records exact versions and Git refs;
-- `manifests/marketplace-plugins.json` records curated provider plugin names.
+- `manifests/marketplace-plugins.json` records curated provider plugin names;
+- `manifests/python-skills.json` records the exact portable skill tree and hashes.
 
 This document explains why each group exists. It is not a lockfile substitute.
 
@@ -55,8 +56,27 @@ installer. Verification checks canonical planner, executor, and verifier agents.
 ## Portable Python skills
 
 The `python-skills` component copies the vendored `templates/agents-skills/python-*` directories to
-`~/.agents/skills`. They are vendored because they are workstation instruction assets rather than
-runtime package dependencies.
+`~/.agents/skills`. It installs each directory as one bundle containing `SKILL.md`,
+`agents/openai.yaml`, and selectively loaded `references/`. They are vendored because they are
+workstation instruction assets rather than runtime package dependencies.
+
+The bundle contains:
+
+- `python-architecture-patterns`;
+- `python-async-concurrency-deep-dive`;
+- `python-authentication-and-authorization`;
+- `python-code-quality-fundamentals`;
+- `python-database-patterns`;
+- `python-debugging-and-observability`;
+- `python-environment-and-config`;
+- `python-performance-optimization`;
+- `python-testing-and-mocks`;
+- `python-web-service-runtime`.
+
+`scripts/python-skills.py` validates the manifest hashes, skill frontmatter, UI metadata,
+relative links, portability, and Python examples before installation. Verification requires the
+installed trees to match the vendored source exactly. The raw research corpus is not distributed;
+the skills retain public source URLs, retrieval metadata, and paraphrased provenance maps.
 
 ## Graphify
 

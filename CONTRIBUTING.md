@@ -25,6 +25,7 @@ logs, browser state, or project data.
 ```bash
 python3 -m unittest discover -s tests -v
 bash -n scripts/*.sh
+python3 scripts/python-skills.py validate
 python3 scripts/check-public-safe.py
 ./scripts/install.sh --profile minimal --project-repo /tmp/example --dry-run
 ./scripts/install.sh --profile full --project-repo /tmp/example --dry-run

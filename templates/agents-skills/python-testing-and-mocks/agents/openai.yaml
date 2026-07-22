@@ -1,0 +1,4 @@
+interface:
+  display_name: "Python Testing and Mocks"
+  short_description: "Design deterministic layered Python tests"
+  default_prompt: "Use $python-testing-and-mocks to design the right test layers, doubles, fixtures, and isolation for this behavior."

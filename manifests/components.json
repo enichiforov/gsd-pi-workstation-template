@@ -81,7 +81,7 @@
       "depends_on": ["core"]
     },
     "python-skills": {
-      "description": "Install the vendored portable Python engineering skills.",
+      "description": "Install the hash-verified portable Python engineering skill bundle.",
       "depends_on": ["core"]
     },
     "graphify": {

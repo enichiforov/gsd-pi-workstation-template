@@ -1,0 +1,4 @@
+interface:
+  display_name: "Python Code Quality"
+  short_description: "Write and review maintainable Python code"
+  default_prompt: "Use $python-code-quality-fundamentals to implement or review this Python code for explicit contracts and maintainability."

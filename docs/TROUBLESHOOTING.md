@@ -52,6 +52,25 @@ under `templates/` and your destination before rerunning:
 
 A backup is created before replacement.
 
+For `python-skills`, the unit of replacement is the complete skill directory. This prevents an
+updated `SKILL.md` from being combined with stale references. The backup mirrors the whole
+previous directory, including local extra files.
+
+If verification reports a skill-tree mismatch, inspect it before replacing:
+
+```bash
+python3 scripts/python-skills.py validate
+./scripts/install.sh \
+  --profile developer \
+  --include python-skills \
+  --project-repo ~/code/app \
+  --overwrite
+./scripts/verify.sh \
+  --profile developer \
+  --include python-skills \
+  --project-repo ~/code/app
+```
+
 ## `pi` is missing
 
 The installer first looks for `pi`, then creates an alias next to `gsd` when writable. Otherwise it
