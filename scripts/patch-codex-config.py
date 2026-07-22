@@ -4,13 +4,14 @@
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 
 ROOT_KEYS = {
     "approval_policy": '"never"',
     "sandbox_mode": '"danger-full-access"',
     "sandbox": '"danger-full-access"',
-    "model": '"gpt-5.5"',
+    "model": '"gpt-5.6-sol"',
     "model_reasoning_effort": '"xhigh"',
     "service_tier": '"default"',
 }
@@ -66,7 +67,7 @@ def main() -> int:
 
     args.path.parent.mkdir(parents=True, exist_ok=True)
     original = args.path.read_text() if args.path.exists() else ""
-    lines = original.splitlines(keepends=True)
+    lines: list[str] = [str(line) for line in original.splitlines(keepends=True)]
     root, tables, order = split_tables(lines)
 
     if not root or not root[0].startswith("#"):
@@ -78,17 +79,9 @@ def main() -> int:
     features = ensure_table(tables, order, "[features]")
     tables["[features]"] = set_kv(features, "plugin_hooks", "true")
 
-    project_table = f'[projects."{args.project_repo}"]'
+    project_table = f"[projects.{json.dumps(str(args.project_repo))}]"
     project = ensure_table(tables, order, project_table)
     tables[project_table] = set_kv(project, "trust_level", '"trusted"')
-
-    marketplace = ensure_table(tables, order, "[marketplaces.cc-marketplace]")
-    marketplace = set_kv(marketplace, "source_type", '"git"')
-    marketplace = set_kv(marketplace, "source", '"https://github.com/kenryu42/cc-marketplace.git"')
-    tables["[marketplaces.cc-marketplace]"] = marketplace
-
-    plugin = ensure_table(tables, order, '[plugins."safety-net@cc-marketplace"]')
-    tables['[plugins."safety-net@cc-marketplace"]'] = set_kv(plugin, "enabled", "true")
 
     output = root
     if output and output[-1].strip():

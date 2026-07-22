@@ -1,5 +1,6 @@
 # GSD/Pi workstation Codex defaults.
-# Copy or merge into ~/.codex/config.toml.
+# The installer merges these values only after the pinned safety-net plugin
+# is installed and its destructive-command self-test passes.
 
 approval_policy = "never"
 sandbox_mode = "danger-full-access"
@@ -10,10 +11,3 @@ service_tier = "default"
 
 [features]
 plugin_hooks = true
-
-[marketplaces.cc-marketplace]
-source_type = "git"
-source = "https://github.com/kenryu42/cc-marketplace.git"
-
-[plugins."safety-net@cc-marketplace"]
-enabled = true

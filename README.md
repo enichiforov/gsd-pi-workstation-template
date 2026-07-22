@@ -1,99 +1,164 @@
 # GSD Pi Workstation Template
 
-A public, reusable bootstrap kit for a GSD/Pi + Codex coding workstation.
+A reproducible, selective installer for an opinionated GSD/Pi coding workstation on macOS.
 
-It captures a practical agentic development flow:
+It packages the workflow rather than personal machine state: pinned agent extensions, curated
+instructions, Codex safety controls, optional Claude/Python tooling, verification, and public-safety
+checks. No credentials, auth files, private prompts, or project data belong in this repository.
 
-- Pi/GSD package installation
-- LSP/AST-first code navigation via `pi-lens`
-- native Pi subagents via `pi-subagents`
-- changed-code simplification review via `pi-simplify`
-- visual plan review via Plannotator
-- `/wait-what` pause/explain command
-- Codex destructive-command guard via `cc-safety-net`
-- generic `AGENTS.md` templates for user-level and project-level instructions
-- a `pi` CLI shim/alias for extension runtimes that still spawn `pi` while npm GSD publishes `gsd`
-- a small GSD/Pi npm export compatibility patch for community extensions
+> [!WARNING]
+> The default `full` profile intentionally configures Codex with
+> `approval_policy = "never"` and `sandbox_mode = "danger-full-access"`.
+> The installer enables those settings **only after** installing and self-testing `cc-safety-net`.
+> This is a high-autonomy workstation, not a security sandbox. Start with `minimal` if you do not
+> want that tradeoff.
 
-This repo is intentionally public-safe. It contains no auth files, no API keys, no private project state, and no private runtime databases.
+## What you get
 
-## Quick install
+- pinned GSD/Pi packages for navigation, delegation, and review;
+- global and project `AGENTS.md` templates;
+- managed GSD settings, models, and multi-pass configuration;
+- fail-closed Codex safety-net installation before autonomous settings;
+- optional coding-workflow marketplaces for Claude Code and Codex;
+- optional `get-shit-done-cc`, Python engineering skills, and Graphify;
+- dry-run planning, component overrides, idempotent file installation, and backups;
+- profile-aware verification and a public-safety scanner.
 
-Prerequisites:
+## Requirements
 
-- `git`
-- `node` / `npm`
-- `python3`
-- `gsd` / Pi
-- Codex CLI, if you want the safety-net hook
+- macOS;
+- Git;
+- Node.js 22+ and npm;
+- Python 3.9+;
+- [GSD/Pi](https://opengsd.net/) 1.11+ available as `gsd`;
+- a local project checkout when installing `workspace-config` or `codex`;
+- Codex CLI for profiles containing `codex`;
+- `uv` or `pipx` when installing `graphify`.
+
+Claude Code is optional. When it is not installed, Claude-specific marketplace setup is reported as
+a warning and the rest of the profile continues.
+
+## Quick start
 
 ```bash
-git clone https://github.com/enichiforov/gsd-pi-workstation-template ~/gsd-pi-workstation-template
-cd ~/gsd-pi-workstation-template
-./scripts/install.sh --project-repo ~/YourProject --overwrite
-./scripts/verify.sh --project-repo ~/YourProject
-./scripts/check-public-safe.py
-./scripts/docker-smoke.sh
+git clone https://github.com/enichiforov/gsd-pi-workstation-template.git
+cd gsd-pi-workstation-template
+
+./scripts/install.sh --list-components
+./scripts/install.sh --project-repo "$HOME/code/your-project" --dry-run
+./scripts/install.sh --project-repo "$HOME/code/your-project"
+./scripts/verify.sh --project-repo "$HOME/code/your-project"
 ```
 
-Restart any open GSD/Pi/Codex sessions after installation.
+The default profile is `full`. No remote `curl | sh` bootstrap is provided: clone, inspect, dry-run,
+then install.
 
-## What gets installed
+## Profiles
 
-- `~/AGENTS.md` from `templates/root/AGENTS.md`
-- project `AGENTS.md` from `templates/project/AGENTS.md`
-- `~/.gsd/agent/settings.json`
-- `~/.gsd/agent/multi-pass.json`
-- GSD/Pi package registrations from `manifests/gsd-packages.txt`
-- pinned npm extension packages from `manifests/agent-npm-package.json`
-- Codex `cc-safety-net` plugin configuration, when Codex is installed
-- coding-workflow marketplace plugins from `manifests/marketplace-plugins.json`
-- portable `python-*` development skills from `templates/agents-skills/` into `~/.agents/skills/`
-  ("how to write good code" — installed for both Claude Code and Codex from the
-  public `wshobson/agents` marketplace; skip with `--skip-plugins`)
-- Claude Code GSD layer (33 `gsd-*` subagents + commands/skills) via `npm i -g get-shit-done-cc`
-  (pinned; not vendored — reproduced git-native from the public package; skip with `--skip-cc-gsd`)
-- graphify knowledge-graph CLI + `/graphify` skill via `uv tool install graphifyy` (or `pipx`),
-  registered for Claude Code, Codex, and Pi (reference-install, not vendored; skip with `--skip-graphify`)
+| Profile | Intended use | Components |
+|---|---|---|
+| `minimal` | Portable starting point | core CLI compatibility and workstation templates |
+| `developer` | Daily coding without large marketplaces/Graphify | minimal + version-gated compatibility patch, navigation, delegation, review, autonomous Codex |
+| `full` (default) | Complete workstation reproduced from this repository | developer + marketplaces, Claude GSD, Python skills, Graphify |
 
-## Included packages
+The exact machine-readable definitions live in [`manifests/components.json`](manifests/components.json).
+The profile name is only a starting point: components can be added or removed explicitly.
 
-| Package | Purpose |
-|---|---|
-| `pi-subagents` | native Pi delegation pool |
-| `pi-lens` | LSP, AST search, diagnostics, module reports |
-| `pi-simplify` | changed-code simplification review |
-| `@plannotator/pi-extension` | visual plan/message/diff review |
-| `@narumitw/pi-wait-what` | `/wait-what` pause and explain command |
-| `pi-multi-pass` | provider pooling/fallback configuration |
-| `cc-safety-net` | Codex hook for destructive git/filesystem command blocking |
-| `graphify` | knowledge-graph tool: any folder (code/docs/papers/images/video) → navigable graph + `/graphify` skill |
+```bash
+# Developer profile plus the vendored Python skills
+./scripts/install.sh \
+  --profile developer \
+  --include python-skills \
+  --project-repo "$HOME/code/your-project"
 
-## Docs
+# Full profile without provider marketplaces or Graphify
+./scripts/install.sh \
+  --profile full \
+  --exclude marketplace,graphify \
+  --project-repo "$HOME/code/your-project"
 
-- [`docs/BOOTSTRAP-MACBOOK.md`](docs/BOOTSTRAP-MACBOOK.md) — full fresh-machine checklist
-- [`docs/PLUGIN-INVENTORY.md`](docs/PLUGIN-INVENTORY.md) — why each plugin is included
-- [`docs/DEVELOPMENT-FLOW.md`](docs/DEVELOPMENT-FLOW.md) — recommended coding flow
-- [`docs/GRAPHIFY.md`](docs/GRAPHIFY.md) — knowledge-graph tool: install, usage, and when to reach for it
-- [`docs/SECURITY.md`](docs/SECURITY.md) — what not to commit and how safety-net fits
+# Verify the same resolved selection
+./scripts/verify.sh \
+  --profile full \
+  --exclude marketplace,graphify \
+  --project-repo "$HOME/code/your-project"
+```
 
-## Customize
+Dependencies are resolved automatically. An invalid request such as excluding
+`codex-safety-net` while retaining `codex` fails before the machine is changed.
 
-Edit these before installing if your project needs different defaults:
+See [Configuration](docs/CONFIGURATION.md) for every component and CLI option.
 
-- `templates/root/AGENTS.md`
-- `templates/project/AGENTS.md`
-- `templates/gsd-agent/settings.json`
-- `templates/gsd-agent/models.json`
-- `templates/gsd-agent/multi-pass.json`
-- `templates/codex/config.toml`
+## What the installer changes
 
-## Safety notes
+Depending on the selected components, installation may update:
 
-This template includes guardrails, but it does not make autonomous coding risk-free.
+- `~/AGENTS.md`;
+- `<project>/AGENTS.md`;
+- `~/.gsd/agent/{settings,models,multi-pass}.json`;
+- `~/.gsd/agent/npm/` and GSD package registration;
+- `~/.codex/config.toml` and Codex plugin state;
+- `~/.claude/` when Claude components are selected;
+- `~/.agents/skills/` for portable Python skills;
+- the user `uv`/`pipx` tool environment for Graphify.
 
-- `scripts/install.sh` creates a local `pi` command alias to `gsd` when needed. This prevents `spawn pi ENOENT` in extension runtimes.
-- `scripts/install.sh` may patch local GSD/Pi npm package export maps so community extensions load cleanly. This is idempotent and local to the machine.
-- `cc-safety-net` blocks many destructive shell commands; it is not a sandbox or firewall.
-- Approval boundaries still matter for pushes, deployments, external services, secrets, and paid API behavior.
-- Keep private project facts, personal data, credentials, and runtime state out of public forks.
+Existing managed template files are preserved unless `--overwrite` is passed. Before replacement,
+the installer copies them to:
+
+```text
+${XDG_STATE_HOME:-~/.local/state}/gsd-pi-workstation/backups/<run-id>/
+```
+
+The last successful selection is recorded in `last-install.txt` under the same state directory.
+Package/plugin operations are intentionally not auto-rolled back; configuration-file backups make
+recovery explicit and inspectable.
+
+## Updating
+
+1. Review upstream changes and [`manifests/pinned-inventory.json`](manifests/pinned-inventory.json).
+2. Run the installer with `--dry-run` and the same profile/overrides.
+3. Run with `--overwrite` only when you intend to refresh managed templates.
+4. Run `scripts/verify.sh` with the same profile/overrides.
+
+```bash
+git pull --ff-only
+./scripts/install.sh --profile full --project-repo "$HOME/code/your-project" --dry-run
+./scripts/install.sh --profile full --project-repo "$HOME/code/your-project" --overwrite
+./scripts/verify.sh --profile full --project-repo "$HOME/code/your-project"
+```
+
+## Repository layout
+
+```text
+manifests/   profiles, exact versions, source refs, plugin inventory
+templates/   public-safe files copied into user/project configuration
+scripts/     install, verify, compatibility patches, smoke/public checks
+tests/       standard-library unit and CLI contract tests
+docs/        configuration, security, workflow, and troubleshooting guides
+```
+
+## Development checks
+
+```bash
+python3 -m unittest discover -s tests -v
+bash -n scripts/*.sh
+python3 scripts/check-public-safe.py
+./scripts/install.sh --profile full --dry-run --project-repo /tmp/example
+```
+
+Docker-based end-to-end smoke testing is available with `scripts/docker-smoke.sh`.
+See [Contributing](CONTRIBUTING.md) before changing profiles or dependency pins.
+
+## Documentation
+
+- [Configuration and component selection](docs/CONFIGURATION.md)
+- [Security model](docs/SECURITY.md)
+- [Plugin inventory](docs/PLUGIN-INVENTORY.md)
+- [MacBook bootstrap](docs/BOOTSTRAP-MACBOOK.md)
+- [Development flow](docs/DEVELOPMENT-FLOW.md)
+- [Graphify notes](docs/GRAPHIFY.md)
+- [Troubleshooting and recovery](docs/TROUBLESHOOTING.md)
+
+## License
+
+[MIT](LICENSE)

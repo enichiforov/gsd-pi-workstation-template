@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Run unit tests
+        run: python3 -m unittest discover -s tests -v
+
+      - name: Validate Python syntax
+        run: python3 -m compileall -q scripts tests
+
+      - name: Validate shell scripts
+        run: |
+          bash -n scripts/*.sh
+          shellcheck scripts/*.sh
+
+      - name: Validate JSON manifests
+        run: |
+          python3 -m json.tool manifests/components.json >/dev/null
+          python3 -m json.tool manifests/marketplace-plugins.json >/dev/null
+          python3 -m json.tool manifests/pinned-inventory.json >/dev/null
+
+      - name: Verify profile contracts
+        run: |
+          ./scripts/install.sh --profile minimal --project-repo /tmp/example --dry-run
+          ./scripts/install.sh --profile developer --exclude codex --project-repo /tmp/example --dry-run
+          ./scripts/install.sh --profile full --exclude codex,marketplace,graphify --project-repo /tmp/example --dry-run
+
+      - name: Scan for private material
+        run: python3 scripts/check-public-safe.py

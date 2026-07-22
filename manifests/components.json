@@ -1,0 +1,118 @@
+{
+  "schema_version": 1,
+  "default_profile": "full",
+  "profiles": {
+    "minimal": {
+      "description": "Portable GSD/Pi core plus workstation instruction templates.",
+      "components": [
+        "core",
+        "workspace-config"
+      ]
+    },
+    "developer": {
+      "description": "Daily coding stack without provider-specific marketplaces or knowledge graph tooling.",
+      "components": [
+        "core",
+        "workspace-config",
+        "compatibility-patch",
+        "navigation",
+        "delegation",
+        "review",
+        "codex"
+      ]
+    },
+    "full": {
+      "description": "Complete opinionated workstation, including Codex autonomy, Claude tooling, Python skills, and Graphify.",
+      "components": [
+        "core",
+        "workspace-config",
+        "compatibility-patch",
+        "navigation",
+        "delegation",
+        "review",
+        "marketplace",
+        "claude-gsd",
+        "python-skills",
+        "graphify",
+        "codex"
+      ]
+    }
+  },
+  "components": {
+    "core": {
+      "description": "Validate GSD/Pi prerequisites and provide a stable pi command.",
+      "depends_on": []
+    },
+    "workspace-config": {
+      "description": "Install global/project AGENTS.md and GSD settings templates.",
+      "depends_on": ["core"]
+    },
+    "compatibility-patch": {
+      "description": "Apply the version-gated GSD npm exports compatibility patch.",
+      "depends_on": ["core"]
+    },
+    "navigation": {
+      "description": "Install pi-lens for LSP, AST, and diagnostics workflows.",
+      "depends_on": ["core"]
+    },
+    "delegation": {
+      "description": "Install pi-subagents and pi-multi-pass delegation tooling.",
+      "depends_on": ["core"]
+    },
+    "review": {
+      "description": "Install pi-simplify, Plannotator, and wait-what review tools.",
+      "depends_on": ["core"]
+    },
+    "codex-safety-net": {
+      "description": "Install and verify the Codex destructive-command guard before enabling autonomy.",
+      "depends_on": ["core"],
+      "internal": true
+    },
+    "codex": {
+      "description": "Configure the opinionated autonomous Codex profile.",
+      "depends_on": ["codex-safety-net"]
+    },
+    "marketplace": {
+      "description": "Install the curated coding-workflow marketplace plugins.",
+      "depends_on": ["core"]
+    },
+    "claude-gsd": {
+      "description": "Install the pinned get-shit-done-cc layer for Claude Code.",
+      "depends_on": ["core"]
+    },
+    "python-skills": {
+      "description": "Install the vendored portable Python engineering skills.",
+      "depends_on": ["core"]
+    },
+    "graphify": {
+      "description": "Install and register Graphify for Claude, Codex, and Pi.",
+      "depends_on": ["core"]
+    }
+  },
+  "gsd_packages": [
+    {
+      "component": "delegation",
+      "source": "git:github.com/hjanuschka/pi-multi-pass@b9d9d1d7a09252a19ec79868517d49d4f07c4760"
+    },
+    {
+      "component": "delegation",
+      "source": "npm:pi-subagents@0.34.0"
+    },
+    {
+      "component": "navigation",
+      "source": "npm:pi-lens@3.8.71"
+    },
+    {
+      "component": "review",
+      "source": "npm:pi-simplify@0.2.3"
+    },
+    {
+      "component": "review",
+      "source": "npm:@plannotator/pi-extension@0.24.2"
+    },
+    {
+      "component": "review",
+      "source": "npm:@narumitw/pi-wait-what@0.13.1"
+    }
+  ]
+}

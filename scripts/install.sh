@@ -3,50 +3,134 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PROJECT_REPO="${PROJECT_REPO:-$HOME/YourProject}"
+PROFILE=""
 OVERWRITE=0
-SKIP_CODEX=0
-SKIP_GSD_EXPORT_PATCH=0
-SKIP_PLUGINS=0
-SKIP_CC_GSD=0
-SKIP_GRAPHIFY=0
-GSD_CC_VERSION="1.42.3"
+DRY_RUN=0
+INCLUDES=()
+EXCLUDES=()
 GRAPHIFY_PLATFORMS=(claude codex pi)
+STATE_ROOT="${XDG_STATE_HOME:-$HOME/.local/state}/gsd-pi-workstation"
+RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)-$$"
+BACKUP_DIR="$STATE_ROOT/backups/$RUN_ID"
+SELECTED_COMPONENTS=()
 
 usage() {
   cat <<'USAGE'
-Usage: scripts/install.sh [--project-repo PATH] [--overwrite] [--skip-codex]
+Usage: scripts/install.sh [options]
 
-Installs the GSD/Pi workstation profile on this Mac.
+Install a reproducible GSD/Pi workstation profile on macOS.
 
 Options:
-  --project-repo PATH  Project checkout path (default: ~/YourProject)
-  --overwrite              Replace existing AGENTS/settings/template files when different
-  --skip-codex             Do not patch Codex config or install safety-net plugin
-  --skip-gsd-export-patch  Do not patch GSD/Pi package exports for community extensions
-  --skip-plugins           Do not install coding-workflow marketplace plugins
-  --skip-cc-gsd            Do not install the Claude Code GSD layer (get-shit-done-cc)
-  --skip-graphify          Do not install the graphify knowledge-graph CLI/skill
+  --project-repo PATH   Project checkout path (default: ~/YourProject)
+  --profile NAME        minimal, developer, or full (default: full)
+  --include NAMES       Add comma-separated components; repeatable
+  --exclude NAMES       Remove comma-separated components; repeatable
+  --list-components     Show profiles/components and exit
+  --dry-run             Print the resolved plan without changing the machine
+  --overwrite           Back up and replace different managed template files
+  -h, --help            Show this help
+
+Compatibility aliases (prefer --exclude):
+  --skip-codex --skip-gsd-export-patch --skip-plugins --skip-cc-gsd
+  --skip-graphify
+
+Examples:
+  ./scripts/install.sh --project-repo ~/code/app --dry-run
+  ./scripts/install.sh --profile minimal --project-repo ~/code/app
+  ./scripts/install.sh --profile developer --include python-skills
+  ./scripts/install.sh --profile full --exclude graphify,marketplace
 USAGE
+}
+
+append_exclude() {
+  EXCLUDES+=("$1")
 }
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --project-repo) PROJECT_REPO="$2"; shift 2 ;;
+    --profile) PROFILE="$2"; shift 2 ;;
+    --include) INCLUDES+=("$2"); shift 2 ;;
+    --exclude) EXCLUDES+=("$2"); shift 2 ;;
+    --list-components) exec python3 "$ROOT/scripts/profile.py" list ;;
+    --dry-run) DRY_RUN=1; shift ;;
     --overwrite) OVERWRITE=1; shift ;;
-    --skip-codex) SKIP_CODEX=1; shift ;;
-    --skip-gsd-export-patch) SKIP_GSD_EXPORT_PATCH=1; shift ;;
-    --skip-plugins) SKIP_PLUGINS=1; shift ;;
-    --skip-cc-gsd) SKIP_CC_GSD=1; shift ;;
-    --skip-graphify) SKIP_GRAPHIFY=1; shift ;;
+    --skip-codex) append_exclude codex; shift ;;
+    --skip-gsd-export-patch) append_exclude compatibility-patch; shift ;;
+    --skip-plugins) append_exclude marketplace; shift ;;
+    --skip-cc-gsd) append_exclude claude-gsd; shift ;;
+    --skip-graphify) append_exclude graphify; shift ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown argument: $1" >&2; usage >&2; exit 2 ;;
   esac
 done
 
+profile_args=(resolve)
+if [[ -n "$PROFILE" ]]; then
+  profile_args+=(--profile "$PROFILE")
+fi
+for item in "${INCLUDES[@]-}"; do
+  [[ -n "$item" ]] && profile_args+=(--include "$item")
+done
+for item in "${EXCLUDES[@]-}"; do
+  [[ -n "$item" ]] && profile_args+=(--exclude "$item")
+done
+resolved_components="$(python3 "$ROOT/scripts/profile.py" "${profile_args[@]}")"
+while IFS= read -r component; do
+  [[ -n "$component" ]] && SELECTED_COMPONENTS+=("$component")
+done <<<"$resolved_components"
+
+has_component() {
+  local wanted="$1" component
+  for component in "${SELECTED_COMPONENTS[@]}"; do
+    [[ "$component" == "$wanted" ]] && return 0
+  done
+  return 1
+}
+
+print_plan() {
+  echo "GSD/Pi workstation installation plan"
+  echo "  profile: ${PROFILE:-full}"
+  echo "  project: $PROJECT_REPO"
+  echo "  overwrite managed files: $OVERWRITE"
+  echo "  components:"
+  local component
+  for component in "${SELECTED_COMPONENTS[@]}"; do
+    echo "    - $component"
+  done
+}
+
+print_plan
+if [[ "$DRY_RUN" == "1" ]]; then
+  echo "Dry run complete; no changes made."
+  exit 0
+fi
+
+on_error() {
+  local status=$?
+  echo "Installation failed (exit $status)." >&2
+  if [[ -d "$BACKUP_DIR" ]]; then
+    echo "Backups from this run: $BACKUP_DIR" >&2
+  fi
+  exit "$status"
+}
+trap on_error ERR
+
 need_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
     echo "Missing required command: $1" >&2
     exit 1
+  fi
+}
+
+backup_file() {
+  local path="$1" backup
+  [[ -e "$path" ]] || return 0
+  backup="$BACKUP_DIR$path"
+  if [[ ! -e "$backup" ]]; then
+    mkdir -p "$(dirname "$backup")"
+    cp -p "$path" "$backup"
+    echo "backed up: $path -> $backup"
   fi
 }
 
@@ -62,169 +146,327 @@ install_file() {
       echo "exists/different, skipped without --overwrite: $dst" >&2
       return 0
     fi
+    backup_file "$dst"
   fi
   cp "$src" "$dst"
   echo "installed: $dst"
 }
 
 install_gsd_package() {
-  local source="$1"
-  if gsd list 2>/dev/null | grep -Fq "$source"; then
-    echo "gsd package already registered: $source"
-  else
-    echo "installing gsd package: $source"
-    local log_file
-    log_file="$(mktemp)"
-    if ! gsd install "$source" >"$log_file" 2>&1; then
-      cat "$log_file"
-      rm -f "$log_file"
-      echo "FAIL gsd install failed for: $source" >&2
-      exit 1
-    fi
-    cat "$log_file"
-    if grep -Fq "Failed to load extension" "$log_file"; then
-      rm -f "$log_file"
-      echo "FAIL extension load failure detected while installing: $source" >&2
-      echo "Try rerunning without --skip-gsd-export-patch, or inspect scripts/patch-gsd-exports.py." >&2
-      exit 1
-    fi
+  local source="$1" log_file
+  echo "ensuring pinned gsd package: $source"
+  log_file="$(mktemp)"
+  if ! gsd install "$source" >"$log_file" 2>&1; then
+    command cat "$log_file"
     rm -f "$log_file"
+    echo "GSD package installation failed: $source" >&2
+    return 1
   fi
+  command cat "$log_file"
+  if grep -Fq "Failed to load extension" "$log_file"; then
+    rm -f "$log_file"
+    echo "Extension load failure detected: $source" >&2
+    return 1
+  fi
+  rm -f "$log_file"
 }
 
-manifest_field() {
-  # $1 = python expression against the parsed manifest dict `d`
-  python3 -c "import json; d=json.load(open('$ROOT/manifests/marketplace-plugins.json')); print($1)"
+json_value() {
+  local path="$1" expression="$2"
+  python3 - "$path" "$expression" <<'PY'
+import json
+import sys
+
+value = json.load(open(sys.argv[1], encoding="utf-8"))
+for key in sys.argv[2].split("."):
+    value = value[key]
+if isinstance(value, list):
+    print("\n".join(str(item) for item in value))
+else:
+    print(value)
+PY
 }
 
-install_coding_plugins() {
-  local manifest="$ROOT/manifests/marketplace-plugins.json"
-  if [[ ! -f "$manifest" ]]; then
-    echo "no manifests/marketplace-plugins.json; skipping coding-workflow plugins"
-    return 0
-  fi
-  local mp_source mp_name
-  mp_source="$(manifest_field "d['marketplace']['source']")"
-  mp_name="$(manifest_field "d['marketplace']['name']")"
+require_minimum_version() {
+  local label="$1" actual="$2" required="$3"
+  if ! python3 -c '
+import re
+import sys
 
-  # Claude Code coding plugins (git-native marketplace, no vendored plugin code).
-  if command -v claude >/dev/null 2>&1; then
-    claude plugin marketplace add "$mp_source" >/dev/null 2>&1 || true
-    local claude_installed
-    claude_installed="$(claude plugin list 2>/dev/null || true)"
-    while IFS= read -r name; do
-      [[ -z "$name" ]] && continue
-      if grep -Fq "${name}@${mp_name}" <<<"$claude_installed"; then
-        echo "claude plugin already installed: ${name}@${mp_name}"
-      else
-        echo "installing claude plugin: ${name}@${mp_name}"
-        claude plugin install "${name}@${mp_name}" >/dev/null 2>&1 \
-          || echo "WARN claude plugin install failed: ${name}@${mp_name}" >&2
-      fi
-    done < <(manifest_field "'\n'.join(d['claude_plugins'])")
-  else
-    echo "claude not found; skipped Claude coding plugins" >&2
-  fi
+def parts(value):
+    match = re.search(r"(\d+(?:\.\d+)*)", value)
+    if match is None:
+        raise SystemExit(2)
+    return tuple(int(part) for part in match.group(1).split("."))
 
-  # Codex coding plugins — same public marketplace, resolved git-native.
-  if [[ "$SKIP_CODEX" != "1" ]] && command -v codex >/dev/null 2>&1; then
-    codex plugin marketplace add "$mp_source" >/dev/null 2>&1 || true
-    local codex_list
-    codex_list="$(codex plugin list 2>/dev/null || true)"
-    while IFS= read -r name; do
-      [[ -z "$name" ]] && continue
-      if awk -v p="${name}@${mp_name}" '$1==p && /installed/{f=1} END{exit f?0:1}' <<<"$codex_list"; then
-        echo "codex plugin already installed: ${name}@${mp_name}"
-      else
-        echo "installing codex plugin: ${name}@${mp_name}"
-        codex plugin add "${name}@${mp_name}" >/dev/null 2>&1 \
-          || echo "WARN codex plugin add failed: ${name}@${mp_name}" >&2
-      fi
-    done < <(manifest_field "'\n'.join(d['codex_plugins'])")
+raise SystemExit(0 if parts(sys.argv[1]) >= parts(sys.argv[2]) else 1)
+' "$actual" "$required"; then
+    echo "$label $required or newer is required; found: $actual" >&2
+    return 1
   fi
-}
-
-install_graphify() {
-  # Reference-install the graphify knowledge-graph CLI + skill. No third-party
-  # code is vendored into this repo: the CLI comes from the public PyPI package
-  # `graphifyy` (double-y; the command stays `graphify`) and `graphify install`
-  # copies the skill into each assistant's config dir. Idempotent.
-  if command -v graphify >/dev/null 2>&1; then
-    echo "graphify CLI already installed: $(command -v graphify)"
-  elif command -v uv >/dev/null 2>&1; then
-    echo "installing graphify CLI via uv tool install graphifyy"
-    uv tool install graphifyy >/dev/null 2>&1 \
-      || { echo "WARN uv tool install graphifyy failed; skipping graphify" >&2; return 0; }
-  elif command -v pipx >/dev/null 2>&1; then
-    echo "installing graphify CLI via pipx install graphifyy"
-    pipx install graphifyy >/dev/null 2>&1 \
-      || { echo "WARN pipx install graphifyy failed; skipping graphify" >&2; return 0; }
-  else
-    echo "WARN neither uv nor pipx found; skipping graphify (install uv: https://astral.sh/uv)" >&2
-    return 0
-  fi
-
-  if ! command -v graphify >/dev/null 2>&1; then
-    # uv/pipx installs land in a bin dir that may not be on this shell's PATH yet.
-    echo "WARN graphify installed but not on PATH; open a new shell, then run: graphify install" >&2
-    return 0
-  fi
-
-  # Register the skill for each assistant this workstation targets. Skip codex
-  # registration when --skip-codex was passed.
-  for platform in "${GRAPHIFY_PLATFORMS[@]}"; do
-    if [[ "$platform" == "codex" && "$SKIP_CODEX" == "1" ]]; then
-      continue
-    fi
-    if graphify install --platform "$platform" >/dev/null 2>&1; then
-      echo "graphify skill registered for: $platform"
-    else
-      echo "WARN graphify install --platform $platform failed" >&2
-    fi
-  done
+  echo "verified $label version: $actual"
 }
 
 ensure_pi_command() {
   if command -v pi >/dev/null 2>&1; then
     echo "pi command available: $(command -v pi)"
-    return
+    return 0
   fi
 
   local gsd_path gsd_dir user_bin user_shim
   gsd_path="$(command -v gsd)"
   gsd_dir="$(dirname "$gsd_path")"
-
-  # Prefer a real PATH-level alias next to gsd, so clean shells and child
-  # runtimes that spawn `pi` do not depend on shell startup files.
   if [[ ! -e "$gsd_dir/pi" && -w "$gsd_dir" ]]; then
     ln -s "$gsd_path" "$gsd_dir/pi"
     echo "created pi symlink: $gsd_dir/pi -> $gsd_path"
   fi
-
-  # Fallback for user-scoped GSD sessions. This path is first in the default
-  # GSD agent PATH on this workstation profile.
   if ! command -v pi >/dev/null 2>&1; then
     user_bin="$HOME/.gsd/agent/bin"
     user_shim="$user_bin/pi"
     if [[ ! -e "$user_shim" ]]; then
       mkdir -p "$user_bin"
-      cat >"$user_shim" <<'SHIM'
-#!/usr/bin/env bash
-set -euo pipefail
-exec gsd "$@"
-SHIM
+      printf '%s\n' '#!/usr/bin/env bash' 'set -euo pipefail' 'exec gsd "$@"' >"$user_shim"
       chmod +x "$user_shim"
       echo "created pi shim: $user_shim"
     fi
+    export PATH="$user_bin:$PATH"
+  fi
+  command -v pi >/dev/null 2>&1 || { echo "Unable to provide a working pi command" >&2; return 1; }
+}
+
+install_selected_gsd_packages() {
+  local package_args=("${profile_args[@]}" --packages) source package_sources_output
+  package_sources_output="$(python3 "$ROOT/scripts/profile.py" "${package_args[@]}")"
+  while IFS= read -r source; do
+    [[ -n "$source" ]] && install_gsd_package "$source"
+  done <<<"$package_sources_output"
+}
+
+install_workspace_config() {
+  install_file "$ROOT/templates/root/AGENTS.md" "$HOME/AGENTS.md"
+  install_file "$ROOT/templates/project/AGENTS.md" "$PROJECT_REPO/AGENTS.md"
+  install_file "$ROOT/templates/gsd-agent/settings.json" "$HOME/.gsd/agent/settings.json"
+  install_file "$ROOT/templates/gsd-agent/models.json" "$HOME/.gsd/agent/models.json"
+  install_file "$ROOT/templates/gsd-agent/multi-pass.json" "$HOME/.gsd/agent/multi-pass.json"
+
+  local legacy="$HOME/.gsd/agent/extensions/subagent"
+  if [[ -d "$legacy" ]] && has_component delegation; then
+    mkdir -p "$HOME/.gsd/agent/extensions-disabled"
+    if [[ -e "$HOME/.gsd/agent/extensions-disabled/subagent-legacy-bundled" ]]; then
+      echo "legacy subagent extension already disabled"
+    else
+      mv "$legacy" "$HOME/.gsd/agent/extensions-disabled/subagent-legacy-bundled"
+      echo "disabled legacy bundled subagent extension"
+    fi
+  fi
+}
+
+install_python_skills() {
+  local skill_md skill_name
+  for skill_md in "$ROOT"/templates/agents-skills/*/SKILL.md; do
+    [[ -e "$skill_md" ]] || continue
+    skill_name="$(basename "$(dirname "$skill_md")")"
+    install_file "$skill_md" "$HOME/.agents/skills/$skill_name/SKILL.md"
+  done
+}
+
+install_claude_gsd() {
+  local version
+  version="$(json_value "$ROOT/manifests/pinned-inventory.json" pinned_dependencies.get-shit-done-cc)"
+  echo "installing Claude Code GSD layer: get-shit-done-cc@$version"
+  npm install -g "get-shit-done-cc@$version"
+  need_cmd get-shit-done-cc
+  get-shit-done-cc --claude --global
+}
+
+codex_marketplace_root() {
+  local name="$1"
+  codex plugin marketplace list --json | python3 -c '
+import json
+import sys
+name = sys.argv[1]
+for marketplace in json.load(sys.stdin).get("marketplaces", []):
+    if marketplace.get("name") == name:
+        print(marketplace.get("root", ""))
+        break
+' "$name"
+}
+
+ensure_codex_marketplace() {
+  local source="$1" ref="$2" name="$3" root=""
+  root="$(codex_marketplace_root "$name")"
+  if [[ -n "$root" ]] && { [[ ! -d "$root/.git" ]] || [[ "$(git -C "$root" rev-parse HEAD)" != "$ref" ]]; }; then
+    echo "refreshing Codex marketplace at pinned ref: $name@$ref"
+    codex plugin marketplace remove "$name" >/dev/null
+    root=""
+  fi
+  if [[ -z "$root" ]]; then
+    codex plugin marketplace add "$source" --ref "$ref" >/dev/null
+    root="$(codex_marketplace_root "$name")"
+  fi
+  [[ -d "$root/.git" ]] || { echo "Codex marketplace is not a Git snapshot: $name" >&2; return 1; }
+  [[ "$(git -C "$root" rev-parse HEAD)" == "$ref" ]] || {
+    echo "Codex marketplace did not resolve to pinned ref: $name@$ref" >&2
+    return 1
+  }
+  echo "verified Codex marketplace: $name@$ref"
+}
+
+claude_marketplace_location() {
+  local name="$1"
+  claude plugin marketplace list --json | python3 -c '
+import json
+import sys
+name = sys.argv[1]
+for marketplace in json.load(sys.stdin):
+    if marketplace.get("name") == name:
+        print(marketplace.get("installLocation", ""))
+        break
+' "$name"
+}
+
+ensure_claude_marketplace() {
+  local snapshot="$1" ref="$2" name="$3" location=""
+  location="$(claude_marketplace_location "$name")"
+  if [[ -n "$location" ]] && { [[ ! -d "$location/.git" ]] || [[ "$(git -C "$location" rev-parse HEAD)" != "$ref" ]]; }; then
+    echo "refreshing Claude marketplace at pinned ref: $name@$ref"
+    claude plugin marketplace remove "$name" >/dev/null
+    location=""
+  fi
+  if [[ -z "$location" ]]; then
+    claude plugin marketplace add "$snapshot" >/dev/null
+    location="$(claude_marketplace_location "$name")"
+  fi
+  [[ -n "$location" ]] || { echo "Claude marketplace was not registered: $name" >&2; return 1; }
+  if [[ -d "$location/.git" ]] && [[ "$(git -C "$location" rev-parse HEAD)" != "$ref" ]]; then
+    echo "Claude marketplace did not resolve to pinned ref: $name@$ref" >&2
+    return 1
+  fi
+  [[ "$(git -C "$snapshot" rev-parse HEAD)" == "$ref" ]] || {
+    echo "Claude marketplace source snapshot changed unexpectedly: $name@$ref" >&2
+    return 1
+  }
+  echo "verified Claude marketplace: $name@$ref"
+}
+
+prepare_git_snapshot() {
+  local repository="$1" ref="$2" name="$3"
+  local cache_root="${XDG_CACHE_HOME:-$HOME/.cache}/gsd-pi-workstation/marketplaces"
+  local destination="$cache_root/$name-$ref"
+  if [[ ! -d "$destination/.git" ]]; then
+    mkdir -p "$cache_root"
+    git clone --filter=blob:none --no-checkout "https://github.com/$repository.git" "$destination" >&2
+  fi
+  git -C "$destination" fetch --depth 1 origin "$ref" >&2
+  git -C "$destination" checkout --detach "$ref" >&2
+  [[ "$(git -C "$destination" rev-parse HEAD)" == "$ref" ]] || {
+    echo "Marketplace snapshot did not resolve to pinned ref: $repository@$ref" >&2
+    return 1
+  }
+  printf '%s\n' "$destination"
+}
+
+install_coding_plugins() {
+  local manifest="$ROOT/manifests/marketplace-plugins.json"
+  local source name ref plugin installed claude_snapshot
+  source="$(json_value "$manifest" marketplace.source)"
+  name="$(json_value "$manifest" marketplace.name)"
+  ref="$(json_value "$manifest" marketplace.ref)"
+
+  if command -v claude >/dev/null 2>&1; then
+    claude_snapshot="$(prepare_git_snapshot "$source" "$ref" "$name")"
+    ensure_claude_marketplace "$claude_snapshot" "$ref" "$name"
+    installed="$(claude plugin list 2>/dev/null || true)"
+    while IFS= read -r plugin; do
+      [[ -n "$plugin" ]] || continue
+      if grep -Fq "${plugin}@${name}" <<<"$installed"; then
+        echo "claude plugin already installed: ${plugin}@${name}"
+      else
+        echo "installing claude plugin: ${plugin}@${name}"
+        claude plugin install "${plugin}@${name}" >/dev/null
+      fi
+    done < <(json_value "$manifest" claude_plugins)
+  else
+    echo "WARN claude not found; Claude marketplace plugins were not installed" >&2
   fi
 
-  if command -v pi >/dev/null 2>&1; then
-    echo "pi command available: $(command -v pi)"
+  if command -v codex >/dev/null 2>&1; then
+    ensure_codex_marketplace "$source" "$ref" "$name"
+    installed="$(codex plugin list 2>/dev/null || true)"
+    while IFS= read -r plugin; do
+      [[ -n "$plugin" ]] || continue
+      if grep -Fq "${plugin}@${name}" <<<"$installed"; then
+        echo "codex plugin already installed: ${plugin}@${name}"
+      else
+        echo "installing codex plugin: ${plugin}@${name}"
+        codex plugin add "${plugin}@${name}" >/dev/null
+      fi
+    done < <(json_value "$manifest" codex_plugins)
   else
-    echo "FAIL could not make 'pi' available on current PATH" >&2
-    echo "Ensure either $gsd_dir/pi or $user_shim is on PATH." >&2
-    exit 1
+    echo "WARN codex not found; Codex marketplace plugins were not installed" >&2
   fi
+}
+
+install_graphify() {
+  local version
+  version="$(json_value "$ROOT/manifests/pinned-inventory.json" pinned_dependencies.graphifyy)"
+  if command -v uv >/dev/null 2>&1; then
+    uv tool install --force "graphifyy==$version"
+  elif command -v pipx >/dev/null 2>&1; then
+    pipx install --force "graphifyy==$version"
+  else
+    echo "Graphify requires uv or pipx so its pinned version can be enforced; install one or exclude graphify" >&2
+    return 1
+  fi
+  command -v graphify >/dev/null 2>&1 || {
+    echo "Graphify installed outside PATH; open a new shell and rerun, or exclude graphify" >&2
+    return 1
+  }
+  local platform
+  for platform in "${GRAPHIFY_PLATFORMS[@]}"; do
+    if [[ "$platform" == codex ]] && ! has_component codex; then
+      continue
+    fi
+    graphify install --platform "$platform" >/dev/null
+    echo "registered graphify skill for: $platform"
+  done
+}
+
+install_codex_safety_net() {
+  need_cmd codex
+  local npm_dir="$HOME/.gsd/agent/npm"
+  local inventory="$ROOT/manifests/pinned-inventory.json"
+  local marketplace_source marketplace_ref version
+  marketplace_source="$(json_value "$inventory" codex_safety_net.marketplace)"
+  marketplace_ref="$(json_value "$inventory" codex_safety_net.ref)"
+  version="$(json_value "$inventory" pinned_dependencies.cc-safety-net)"
+
+  mkdir -p "$npm_dir"
+  if [[ ! -f "$npm_dir/package.json" ]]; then
+    printf '%s\n' '{"private":true}' >"$npm_dir/package.json"
+  fi
+  (cd "$npm_dir" && npm install --save-exact "cc-safety-net@$version")
+
+  ensure_codex_marketplace "$marketplace_source" "$marketplace_ref" cc-marketplace
+  codex plugin add safety-net@cc-marketplace >/dev/null
+  if ! codex plugin list --json 2>/dev/null | grep -Fq 'safety-net@cc-marketplace'; then
+    echo "Codex safety-net plugin is not visible after installation" >&2
+    return 1
+  fi
+  if ! (cd "$npm_dir" && npx cc-safety-net explain "git reset --hard" 2>/dev/null | grep -Fq 'Status: BLOCKED'); then
+    echo "Safety-net self-test did not block git reset --hard" >&2
+    return 1
+  fi
+  echo "verified Codex safety-net"
+}
+
+configure_codex_autonomy() {
+  local config="$HOME/.codex/config.toml"
+  backup_file "$config"
+  python3 "$ROOT/scripts/patch-codex-config.py" "$config" --project-repo "$PROJECT_REPO"
+  grep -Eq '^approval_policy = "never"$' "$config"
+  grep -Eq '^sandbox_mode = "danger-full-access"$' "$config"
+  echo "configured autonomous Codex defaults after safety-net verification"
 }
 
 need_cmd git
@@ -232,100 +474,41 @@ need_cmd node
 need_cmd npm
 need_cmd python3
 need_cmd gsd
+inventory="$ROOT/manifests/pinned-inventory.json"
+require_minimum_version "Node.js" "$(node --version)" "$(json_value "$inventory" minimum_versions.node)"
+require_minimum_version "GSD/Pi" "$(gsd --version)" "$(json_value "$inventory" minimum_versions.gsd)"
+require_minimum_version "Python" "$(python3 --version)" "3.9"
 ensure_pi_command
 
-if [[ ! -d "$PROJECT_REPO" ]]; then
+if { has_component workspace-config || has_component codex; } && [[ ! -d "$PROJECT_REPO" ]]; then
   echo "Project repo path does not exist: $PROJECT_REPO" >&2
-  echo "Clone your project first or pass --project-repo PATH." >&2
+  echo "Clone the project first or pass --project-repo PATH." >&2
   exit 1
 fi
 
-if [[ "$SKIP_GSD_EXPORT_PATCH" != "1" ]]; then
+if has_component compatibility-patch; then
   python3 "$ROOT/scripts/patch-gsd-exports.py"
 fi
 
-while IFS= read -r source; do
-  [[ -z "$source" || "$source" =~ ^# ]] && continue
-  install_gsd_package "$source"
-done < "$ROOT/manifests/gsd-packages.txt"
+install_selected_gsd_packages
 
-if [[ -d "$HOME/.gsd/agent/npm" ]]; then
-  echo "pinning npm package versions in ~/.gsd/agent/npm"
-  (cd "$HOME/.gsd/agent/npm" && npm install \
-    pi-subagents@0.33.1 \
-    pi-lens@3.8.65 \
-    pi-simplify@0.2.2 \
-    @plannotator/pi-extension@0.22.0 \
-    @narumitw/pi-wait-what@0.11.0 \
-    cc-safety-net@1.0.6)
-fi
+if has_component claude-gsd; then install_claude_gsd; fi
+if has_component workspace-config; then install_workspace_config; fi
+if has_component python-skills; then install_python_skills; fi
+if has_component codex-safety-net; then install_codex_safety_net; fi
+if has_component codex; then configure_codex_autonomy; fi
+if has_component marketplace; then install_coding_plugins; fi
+if has_component graphify; then install_graphify; fi
 
-# Install the Claude Code GSD layer (33 gsd-* subagents + commands/skills) from the
-# public npm package. Not vendored — reproduced git-native from the pinned version.
-# The installer is marker-managed and idempotent; --claude --global runs non-interactively.
-if [[ "$SKIP_CC_GSD" != "1" ]]; then
-  if command -v npm >/dev/null 2>&1; then
-    echo "installing Claude Code GSD layer (get-shit-done-cc@${GSD_CC_VERSION})"
-    npm install -g "get-shit-done-cc@${GSD_CC_VERSION}" >/dev/null 2>&1 \
-      || echo "WARN npm install -g get-shit-done-cc@${GSD_CC_VERSION} failed" >&2
-    if command -v get-shit-done-cc >/dev/null 2>&1; then
-      get-shit-done-cc --claude --global >/dev/null 2>&1 \
-        || echo "WARN get-shit-done-cc --claude --global failed" >&2
-      echo "Claude Code GSD agents installed to ~/.claude/agents"
-    else
-      echo "WARN get-shit-done-cc bin not found after install; skipped CC GSD layer" >&2
-    fi
-  else
-    echo "npm not found; skipped Claude Code GSD layer" >&2
-  fi
-fi
+mkdir -p "$STATE_ROOT"
+{
+  echo "run_id=$RUN_ID"
+  echo "profile=${PROFILE:-full}"
+  echo "project_repo=$PROJECT_REPO"
+  printf 'components=%s\n' "$(IFS=,; echo "${SELECTED_COMPONENTS[*]}")"
+  if [[ -d "$BACKUP_DIR" ]]; then echo "backup_dir=$BACKUP_DIR"; fi
+} >"$STATE_ROOT/last-install.txt"
 
-install_file "$ROOT/templates/root/AGENTS.md" "$HOME/AGENTS.md"
-install_file "$ROOT/templates/project/AGENTS.md" "$PROJECT_REPO/AGENTS.md"
-install_file "$ROOT/templates/gsd-agent/settings.json" "$HOME/.gsd/agent/settings.json"
-install_file "$ROOT/templates/gsd-agent/models.json" "$HOME/.gsd/agent/models.json"
-install_file "$ROOT/templates/gsd-agent/multi-pass.json" "$HOME/.gsd/agent/multi-pass.json"
-
-# Install portable python-* development skills into the agent skills dir.
-# These live in ~/.agents/skills, are not in any npm package, and do not
-# survive a fresh machine unless vendored here.
-if [[ -d "$ROOT/templates/agents-skills" ]]; then
-  for skill_md in "$ROOT"/templates/agents-skills/*/SKILL.md; do
-    [[ -e "$skill_md" ]] || continue
-    skill_name="$(basename "$(dirname "$skill_md")")"
-    install_file "$skill_md" "$HOME/.agents/skills/$skill_name/SKILL.md"
-  done
-fi
-
-# Let pi-subagents own the subagent tool if an older bundled extension exists.
-if [[ -d "$HOME/.gsd/agent/extensions/subagent" ]]; then
-  mkdir -p "$HOME/.gsd/agent/extensions-disabled"
-  if [[ -e "$HOME/.gsd/agent/extensions-disabled/subagent-legacy-bundled" ]]; then
-    echo "legacy subagent extension already disabled target exists"
-  else
-    mv "$HOME/.gsd/agent/extensions/subagent" "$HOME/.gsd/agent/extensions-disabled/subagent-legacy-bundled"
-    echo "disabled legacy bundled subagent extension"
-  fi
-fi
-
-if [[ "$SKIP_CODEX" != "1" ]]; then
-  if command -v codex >/dev/null 2>&1; then
-    python3 "$ROOT/scripts/patch-codex-config.py" "$HOME/.codex/config.toml" --project-repo "$PROJECT_REPO"
-    codex plugin marketplace add kenryu42/cc-marketplace >/dev/null 2>&1 || true
-    codex plugin marketplace upgrade cc-marketplace >/dev/null 2>&1 || true
-    codex plugin add safety-net@cc-marketplace >/dev/null 2>&1 || true
-    echo "Codex safety-net plugin configured"
-  else
-    echo "codex not found; skipped Codex safety-net config" >&2
-  fi
-fi
-
-if [[ "$SKIP_PLUGINS" != "1" ]]; then
-  install_coding_plugins
-fi
-
-if [[ "$SKIP_GRAPHIFY" != "1" ]]; then
-  install_graphify
-fi
-
-echo "Install complete. Start a fresh gsd/Pi session, then run scripts/verify.sh."
+trap - ERR
+echo "Install complete."
+echo "Verify with: $ROOT/scripts/verify.sh --project-repo '$PROJECT_REPO' --profile '${PROFILE:-full}'"

@@ -3,28 +3,64 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PROJECT_REPO="${PROJECT_REPO:-$HOME/YourProject}"
+PROFILE=""
+INCLUDES=()
+EXCLUDES=()
+SELECTED_COMPONENTS=()
 
 usage() {
   cat <<'USAGE'
-Usage: scripts/verify.sh [--project-repo PATH]
+Usage: scripts/verify.sh [options]
 
-Read-only verification for the GSD/Pi workstation profile.
+Read-only verification for one resolved workstation profile.
+
+Options:
+  --project-repo PATH   Project checkout path (default: ~/YourProject)
+  --profile NAME        minimal, developer, or full (default: full)
+  --include NAMES       Add comma-separated components; repeatable
+  --exclude NAMES       Remove comma-separated components; repeatable
+  -h, --help            Show this help
 USAGE
 }
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --project-repo) PROJECT_REPO="$2"; shift 2 ;;
+    --profile) PROFILE="$2"; shift 2 ;;
+    --include) INCLUDES+=("$2"); shift 2 ;;
+    --exclude) EXCLUDES+=("$2"); shift 2 ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown argument: $1" >&2; usage >&2; exit 2 ;;
   esac
 done
+
+profile_args=(resolve)
+if [[ -n "$PROFILE" ]]; then profile_args+=(--profile "$PROFILE"); fi
+for item in "${INCLUDES[@]-}"; do
+  [[ -n "$item" ]] && profile_args+=(--include "$item")
+done
+for item in "${EXCLUDES[@]-}"; do
+  [[ -n "$item" ]] && profile_args+=(--exclude "$item")
+done
+resolved_components="$(python3 "$ROOT/scripts/profile.py" "${profile_args[@]}")"
+while IFS= read -r component; do
+  [[ -n "$component" ]] && SELECTED_COMPONENTS+=("$component")
+done <<<"$resolved_components"
+
+has_component() {
+  local wanted="$1" component
+  for component in "${SELECTED_COMPONENTS[@]}"; do
+    [[ "$component" == "$wanted" ]] && return 0
+  done
+  return 1
+}
 
 require_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
     echo "FAIL missing command: $1" >&2
     exit 1
   fi
+  echo "OK command: $1"
 }
 
 require_file() {
@@ -35,161 +71,216 @@ require_file() {
   echo "OK file: $1"
 }
 
+require_contains() {
+  local path="$1" value="$2" label="$3"
+  if grep -Fq "$value" "$path"; then
+    echo "OK $label"
+  else
+    echo "FAIL $label ($path)" >&2
+    exit 1
+  fi
+}
+
+json_value() {
+  local path="$1" expression="$2"
+  python3 -c '
+import json
+import sys
+value = json.load(open(sys.argv[1], encoding="utf-8"))
+for key in sys.argv[2].split("."):
+    value = value[key]
+print(value)
+' "$path" "$expression"
+}
+
+require_minimum_version() {
+  local label="$1" actual="$2" required="$3"
+  python3 -c '
+import re
+import sys
+
+def parts(value):
+    match = re.search(r"(\d+(?:\.\d+)*)", value)
+    if match is None:
+        raise SystemExit(2)
+    return tuple(int(part) for part in match.group(1).split("."))
+
+raise SystemExit(0 if parts(sys.argv[1]) >= parts(sys.argv[2]) else 1)
+' "$actual" "$required" || {
+    echo "FAIL $label $required or newer required; found: $actual" >&2
+    return 1
+  }
+  echo "OK $label version: $actual"
+}
+
+codex_marketplace_root() {
+  local name="$1"
+  codex plugin marketplace list --json | python3 -c '
+import json
+import sys
+name = sys.argv[1]
+for marketplace in json.load(sys.stdin).get("marketplaces", []):
+    if marketplace.get("name") == name:
+        print(marketplace.get("root", ""))
+        break
+' "$name"
+}
+
+verify_codex_marketplace_ref() {
+  local name="$1" expected="$2" root actual
+  root="$(codex_marketplace_root "$name")"
+  [[ -d "$root/.git" ]] || { echo "FAIL Codex marketplace missing: $name" >&2; return 1; }
+  actual="$(git -C "$root" rev-parse HEAD)"
+  [[ "$actual" == "$expected" ]] || {
+    echo "FAIL Codex marketplace $name ref $actual; expected $expected" >&2
+    return 1
+  }
+  echo "OK pinned Codex marketplace: $name@$expected"
+}
+
+echo "Verifying profile: ${PROFILE:-full}"
+echo "Components: $(IFS=,; echo "${SELECTED_COMPONENTS[*]}")"
+
 require_cmd gsd
 require_cmd pi
+require_cmd git
 require_cmd npm
 require_cmd node
 require_cmd python3
+inventory="$ROOT/manifests/pinned-inventory.json"
+require_minimum_version "Node.js" "$(node --version)" "$(json_value "$inventory" minimum_versions.node)"
+require_minimum_version "GSD/Pi" "$(gsd --version)" "$(json_value "$inventory" minimum_versions.gsd)"
+require_minimum_version "Python" "$(python3 --version)" "3.9"
+pi --version >/dev/null 2>&1 || { echo "FAIL pi command exists but does not run" >&2; exit 1; }
 
-if ! pi --version >/dev/null 2>&1; then
-  echo "FAIL pi command exists but does not run" >&2
-  exit 1
+if has_component compatibility-patch; then
+  python3 "$ROOT/scripts/patch-gsd-exports.py" --check
+  echo "OK GSD/Pi exports compatibility"
 fi
 
-if ! python3 "$ROOT/scripts/patch-gsd-exports.py" --check; then
-  echo "FAIL GSD/Pi package exports need compatibility patching." >&2
-  echo "Run: $ROOT/scripts/install.sh --project-repo '$PROJECT_REPO' --overwrite" >&2
-  exit 1
+verify_gsd_package() {
+  local source="$1" spec name expected manifest actual repository checkout
+  case "$source" in
+    npm:*)
+      spec="${source#npm:}"
+      expected="${spec##*@}"
+      name="${spec%@"$expected"}"
+      manifest="$HOME/.gsd/agent/npm/node_modules/$name/package.json"
+      [[ -f "$manifest" ]] || { echo "FAIL missing pinned gsd package: $source" >&2; return 1; }
+      actual="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$manifest")"
+      [[ "$actual" == "$expected" ]] || {
+        echo "FAIL gsd package $name version $actual; expected $expected" >&2
+        return 1
+      }
+      ;;
+    git:github.com/*)
+      spec="${source#git:github.com/}"
+      expected="${spec##*@}"
+      repository="${spec%@"$expected"}"
+      checkout="$HOME/.gsd/agent/git/github.com/$repository"
+      [[ -d "$checkout/.git" ]] || { echo "FAIL missing pinned gsd package: $source" >&2; return 1; }
+      actual="$(git -C "$checkout" rev-parse HEAD)"
+      [[ "$actual" == "$expected" ]] || {
+        echo "FAIL gsd package $repository ref $actual; expected $expected" >&2
+        return 1
+      }
+      ;;
+    *)
+      echo "FAIL unsupported package source in manifest: $source" >&2
+      return 1
+      ;;
+  esac
+  echo "OK pinned gsd package: $source"
+}
+
+package_args=("${profile_args[@]}" --packages)
+package_sources_output="$(python3 "$ROOT/scripts/profile.py" "${package_args[@]}")"
+while IFS= read -r package; do
+  [[ -n "$package" ]] && verify_gsd_package "$package"
+done <<<"$package_sources_output"
+
+if has_component workspace-config; then
+  [[ -d "$PROJECT_REPO" ]] || { echo "FAIL project path does not exist: $PROJECT_REPO" >&2; exit 1; }
+  require_file "$HOME/AGENTS.md"
+  require_file "$PROJECT_REPO/AGENTS.md"
+  require_file "$HOME/.gsd/agent/settings.json"
+  require_file "$HOME/.gsd/agent/models.json"
+  require_file "$HOME/.gsd/agent/multi-pass.json"
 fi
 
-packages=(
-  "git:github.com/hjanuschka/pi-multi-pass"
-  "npm:pi-subagents"
-  "npm:pi-lens"
-  "npm:pi-simplify"
-  "npm:@plannotator/pi-extension"
-  "npm:@narumitw/pi-wait-what"
-)
-
-gsd_list="$(gsd list)"
-for pkg in "${packages[@]}"; do
-  if grep -Fq "$pkg" <<<"$gsd_list"; then
-    echo "OK gsd package: $pkg"
-  else
-    echo "FAIL missing gsd package: $pkg" >&2
+if has_component codex-safety-net; then
+  require_cmd codex
+  inventory="$ROOT/manifests/pinned-inventory.json"
+  expected_safety_version="$(json_value "$inventory" pinned_dependencies.cc-safety-net)"
+  safety_manifest="$HOME/.gsd/agent/npm/node_modules/cc-safety-net/package.json"
+  require_file "$safety_manifest"
+  actual_safety_version="$(json_value "$safety_manifest" version)"
+  [[ "$actual_safety_version" == "$expected_safety_version" ]] || {
+    echo "FAIL cc-safety-net version $actual_safety_version; expected $expected_safety_version" >&2
     exit 1
-  fi
-done
-
-require_file "$HOME/AGENTS.md"
-require_file "$PROJECT_REPO/AGENTS.md"
-require_file "$HOME/.gsd/agent/settings.json"
-require_file "$HOME/.gsd/agent/models.json"
-require_file "$HOME/.gsd/agent/multi-pass.json"
-
-if [[ -d "$HOME/.gsd/agent/npm" ]]; then
-  (cd "$HOME/.gsd/agent/npm" && npm ls --depth=0 \
-    pi-subagents \
-    pi-lens \
-    pi-simplify \
-    @plannotator/pi-extension \
-    @narumitw/pi-wait-what \
-    cc-safety-net >/dev/null)
-  echo "OK npm extension packages"
-else
-  echo "FAIL missing ~/.gsd/agent/npm" >&2
-  exit 1
-fi
-
-if command -v codex >/dev/null 2>&1; then
+  }
+  verify_codex_marketplace_ref cc-marketplace "$(json_value "$inventory" codex_safety_net.ref)"
   if codex plugin list --json 2>/dev/null | grep -Fq 'safety-net@cc-marketplace'; then
     echo "OK Codex safety-net plugin installed"
   else
     echo "FAIL Codex safety-net plugin missing" >&2
     exit 1
   fi
-else
-  echo "WARN codex not found; skipped Codex plugin verification"
-fi
-
-# Coding-workflow marketplace plugins ("how to write good code"), reproduced from
-# public git. Guard on a representative plugin; marketplace-agnostic so it holds
-# whether resolved as @claude-code-workflows (clone) or a pre-existing name.
-if command -v claude >/dev/null 2>&1; then
-  if claude plugin list 2>/dev/null | grep -Eq 'python-development@'; then
-    echo "OK Claude coding plugins present (python-development)"
+  if (cd "$HOME/.gsd/agent/npm" && npx cc-safety-net explain "git reset --hard" 2>/dev/null | grep -Fq 'Status: BLOCKED'); then
+    echo "OK safety-net blocks git reset --hard"
   else
-    echo "FAIL Claude coding plugins missing (run install.sh)" >&2
-    exit 1
-  fi
-else
-  echo "WARN claude not found; skipped Claude coding plugin verification"
-fi
-
-if command -v codex >/dev/null 2>&1; then
-  if codex plugin list 2>/dev/null | awk '/python-development@/ && /installed/{f=1} END{exit f?0:1}'; then
-    echo "OK Codex coding plugins present (python-development)"
-  else
-    echo "FAIL Codex coding plugins missing (run install.sh)" >&2
+    echo "FAIL safety-net did not block git reset --hard" >&2
     exit 1
   fi
 fi
 
-skills_dir="$HOME/.agents/skills"
-required_skills=(
-  python-architecture-patterns
-  python-async-concurrency-deep-dive
-  python-code-quality-fundamentals
-  python-database-patterns
-  python-debugging-and-observability
-  python-environment-and-config
-  python-performance-optimization
-  python-testing-and-mocks
-)
-for skill in "${required_skills[@]}"; do
-  if [[ -f "$skills_dir/$skill/SKILL.md" ]]; then
-    echo "OK agent skill: $skill"
-  else
-    echo "FAIL missing agent skill: $skills_dir/$skill/SKILL.md" >&2
-    exit 1
-  fi
-done
+if has_component codex; then
+  require_file "$HOME/.codex/config.toml"
+  require_contains "$HOME/.codex/config.toml" 'approval_policy = "never"' "Codex approval policy"
+  require_contains "$HOME/.codex/config.toml" 'sandbox_mode = "danger-full-access"' "Codex sandbox mode"
+fi
 
-# Claude Code GSD layer (get-shit-done-cc). Guard on canonical subagents. If the
-# agents dir is absent, the layer was skipped (--skip-cc-gsd) or this is not a CC
-# machine — WARN and continue. If it exists, a missing canonical agent means a
-# broken install → FAIL.
-cc_agents_dir="$HOME/.claude/agents"
-required_cc_agents=(gsd-planner gsd-executor gsd-verifier)
-if [[ -d "$cc_agents_dir" ]]; then
-  for agent in "${required_cc_agents[@]}"; do
-    if [[ -f "$cc_agents_dir/$agent.md" ]]; then
-      echo "OK Claude Code GSD agent: $agent"
-    else
-      echo "FAIL missing Claude Code GSD agent: $cc_agents_dir/$agent.md (run install.sh)" >&2
-      exit 1
-    fi
+if has_component marketplace; then
+  if command -v claude >/dev/null 2>&1; then
+    claude plugin list 2>/dev/null | grep -Eq 'python-development@' \
+      || { echo "FAIL Claude coding plugins missing" >&2; exit 1; }
+    echo "OK Claude coding plugins"
+  else
+    echo "WARN claude not found; skipped Claude marketplace verification" >&2
+  fi
+  if command -v codex >/dev/null 2>&1; then
+    coding_ref="$(json_value "$ROOT/manifests/marketplace-plugins.json" marketplace.ref)"
+    coding_name="$(json_value "$ROOT/manifests/marketplace-plugins.json" marketplace.name)"
+    verify_codex_marketplace_ref "$coding_name" "$coding_ref"
+    codex plugin list 2>/dev/null | grep -Eq 'python-development@' \
+      || { echo "FAIL Codex coding plugins missing" >&2; exit 1; }
+    echo "OK Codex coding plugins"
+  else
+    echo "WARN codex not found; skipped Codex marketplace verification" >&2
+  fi
+fi
+
+if has_component python-skills; then
+  for skill_md in "$ROOT"/templates/agents-skills/*/SKILL.md; do
+    [[ -e "$skill_md" ]] || continue
+    skill_name="$(basename "$(dirname "$skill_md")")"
+    require_file "$HOME/.agents/skills/$skill_name/SKILL.md"
   done
-else
-  echo "WARN $cc_agents_dir not present; skipped Claude Code GSD layer verification"
 fi
 
-# graphify knowledge-graph CLI/skill is a reference-install (optional uv/pipx
-# tooling), so a missing CLI is a WARN, not a FAIL. When present, confirm the
-# skill was registered for Claude Code.
-if command -v graphify >/dev/null 2>&1; then
-  echo "OK graphify CLI: $(command -v graphify)"
-  if [[ -f "$HOME/.claude/skills/graphify/SKILL.md" ]]; then
-    echo "OK graphify skill registered (claude)"
-  else
-    echo "WARN graphify CLI present but skill not registered; run: graphify install"
+if has_component claude-gsd; then
+  for agent in gsd-planner gsd-executor gsd-verifier; do
+    require_file "$HOME/.claude/agents/$agent.md"
+  done
+fi
+
+if has_component graphify; then
+  require_cmd graphify
+  require_file "$HOME/.claude/skills/graphify/SKILL.md"
+  if has_component codex; then
+    require_file "$HOME/.codex/skills/graphify/SKILL.md"
   fi
-else
-  echo "WARN graphify not found; run install.sh (needs uv or pipx) or skip with --skip-graphify"
 fi
 
-if (cd "$HOME/.gsd/agent/npm" && npx cc-safety-net explain "git reset --hard" 2>/dev/null | grep -Fq 'Status: BLOCKED'); then
-  echo "OK safety-net blocks git reset --hard"
-else
-  echo "FAIL safety-net did not block git reset --hard in explain mode" >&2
-  exit 1
-fi
-
-if (cd "$HOME/.gsd/agent/npm" && npx cc-safety-net explain "rg pi-lens AGENTS.md" 2>/dev/null | grep -Fq 'Status: ALLOWED'); then
-  echo "OK safety-net allows normal rg command"
-else
-  echo "FAIL safety-net did not allow normal rg command in explain mode" >&2
-  exit 1
-fi
-
-echo "Verification complete. Restart gsd/Pi sessions to load command extensions."
+python3 "$ROOT/scripts/check-public-safe.py"
+echo "Verification complete: ${PROFILE:-full} profile is ready."

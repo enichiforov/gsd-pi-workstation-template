@@ -1,9 +1,10 @@
-# User-level Pi/GSD package sources
-# Install with: gsd install <source>
+# Compatibility view of pinned GSD/Pi package sources.
+# The installer reads manifests/components.json, which also maps each package
+# to its selectable component. Keep this file aligned for human inspection.
 
-git:github.com/hjanuschka/pi-multi-pass
-npm:pi-subagents
-npm:pi-lens
-npm:pi-simplify
-npm:@plannotator/pi-extension
-npm:@narumitw/pi-wait-what
+git:github.com/hjanuschka/pi-multi-pass@b9d9d1d7a09252a19ec79868517d49d4f07c4760
+npm:pi-subagents@0.34.0
+npm:pi-lens@3.8.71
+npm:pi-simplify@0.2.3
+npm:@plannotator/pi-extension@0.24.2
+npm:@narumitw/pi-wait-what@0.13.1

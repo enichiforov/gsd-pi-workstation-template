@@ -1,203 +1,111 @@
-# Bootstrap a GSD/Pi development MacBook
+# Bootstrap a MacBook
 
-This checklist sets up a MacBook with the GSD/Pi + Codex coding workflow captured by this template.
-
-## Target outcome
-
-After this checklist:
-
-- `gsd` / Pi starts with useful coding-agent instructions.
-- Your project has a project-level `AGENTS.md`.
-- Pi/GSD has `pi-subagents`, `pi-lens`, `pi-simplify`, Plannotator, `/wait-what`, and pi-multi-pass installed.
-- Codex has `cc-safety-net` configured as a destructive-command guard, if Codex is installed.
-- graphify knowledge-graph CLI + `/graphify` skill are installed (when `uv` or `pipx` is present).
-- `pi` is available as a CLI alias to `gsd` for extension runtimes that spawn `pi`.
-- Community Pi extensions load without lifecycle `Failed to load extension` errors.
-- `scripts/verify.sh` passes.
-
-## 0. Pick paths
-
-```bash
-export PROJECT_REPO="$HOME/YourProject"
-export WORKSTATION_REPO="$HOME/gsd-pi-workstation-template"
-```
+This checklist sets up a new macOS workstation from an inspectable local clone. It does not restore
+credentials or provider auth.
 
 ## 1. Install prerequisites
 
+Confirm these commands exist:
+
 ```bash
-xcode-select --install || true
-
-# Homebrew, if missing:
-# /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-brew install git gh node python uv || true
+git --version
 node --version
 npm --version
-git --version
-gh --version
 python3 --version
-uv --version   # needed for the graphify reference-install (or install pipx)
-```
-
-Install GSD/Pi if missing:
-
-```bash
-if ! command -v gsd >/dev/null 2>&1; then
-  npm install -g @opengsd/gsd-pi
-fi
-
 gsd --version
 ```
 
-Install Codex CLI if you want Codex + safety-net, then verify:
+The template expects Node.js 22+, Python 3.9+, and GSD/Pi 1.11+. Install Codex before selecting a
+profile containing `codex`. Install `uv` or `pipx` before selecting `graphify`.
+
+Provider authentication is intentionally outside this repository. Sign in using each provider's
+normal flow; never copy auth files into the template.
+
+## 2. Clone the template and your project
 
 ```bash
-codex --version
+mkdir -p "$HOME/code"
+git clone https://github.com/enichiforov/gsd-pi-workstation-template.git \
+  "$HOME/code/gsd-pi-workstation-template"
+git clone <your-project-url> "$HOME/code/your-project"
+cd "$HOME/code/gsd-pi-workstation-template"
 ```
 
-## 2. Authenticate GitHub if needed
-
-Needed for private project repos or pushing changes:
+## 3. Choose a profile
 
 ```bash
-gh auth status || gh auth login -h github.com -p https -w
-gh auth setup-git -h github.com
-gh auth status
+./scripts/install.sh --list-components
 ```
 
-Do not commit tokens or auth files.
+- `minimal`: instructions/settings only;
+- `developer`: navigation, delegation, review, and autonomous Codex;
+- `full` (default): complete workstation including marketplaces, Claude GSD, Python skills, and
+  Graphify.
 
-## 3. Clone your project and this template
+Read [Configuration](CONFIGURATION.md) and [Security](SECURITY.md) before choosing `developer` or
+`full`. Those profiles intentionally configure Codex for maximum autonomy after safety-net passes.
+
+## 4. Preview and install
 
 ```bash
-git clone <YOUR_PROJECT_REPO_URL> "$PROJECT_REPO"
-git clone https://github.com/enichiforov/gsd-pi-workstation-template "$WORKSTATION_REPO"
+./scripts/install.sh \
+  --profile full \
+  --project-repo "$HOME/code/your-project" \
+  --dry-run
+
+./scripts/install.sh \
+  --profile full \
+  --project-repo "$HOME/code/your-project"
 ```
 
-## 4. Install the workstation profile
+If you do not need every optional layer:
 
 ```bash
-cd "$WORKSTATION_REPO"
-./scripts/install.sh --project-repo "$PROJECT_REPO" --overwrite
+./scripts/install.sh \
+  --profile full \
+  --exclude marketplace,graphify \
+  --project-repo "$HOME/code/your-project"
 ```
 
-Use `--skip-codex` if this machine does not use Codex.
+Existing different managed files are not replaced unless `--overwrite` is explicit.
 
-The installer also creates a `pi` command alias to `gsd` when npm GSD does not publish a `pi` binary. This is needed because some extension runtimes still spawn `pi` directly.
-
-The installer also runs `scripts/patch-gsd-exports.py` by default. That idempotent local patch adds missing export-map entries needed by some community Pi extensions. Use `--skip-gsd-export-patch` only if you intentionally do not want the compatibility patch.
-
-## 5. Verify
+## 5. Verify the same selection
 
 ```bash
-./scripts/verify.sh --project-repo "$PROJECT_REPO"
+./scripts/verify.sh \
+  --profile full \
+  --project-repo "$HOME/code/your-project"
 ```
 
-Optional Docker smoke test from this repo, useful before publishing changes:
+When using overrides, repeat them exactly in verification.
+
+## 6. Restore private state separately
+
+Restore provider auth and secrets through their supported login or secret-management flow. Do not
+restore `.gsd` runtime databases, stale npm caches, Codex auth files, browser state, or old session
+transcripts from this public repository.
+
+## 7. Validate a real project
+
+From the project checkout:
 
 ```bash
-./scripts/docker-smoke.sh
+cd "$HOME/code/your-project"
+gsd --version
+pi --version
 ```
 
-Expected high-level result:
+Open the agent, confirm the intended model/provider identity, and begin with a read-only task. For
+Codex, confirm the safety-net plugin remains enabled before permitting unattended work.
 
-```text
-OK gsd package: git:github.com/hjanuschka/pi-multi-pass
-OK gsd package: npm:pi-subagents
-OK gsd package: npm:pi-lens
-OK gsd package: npm:pi-simplify
-OK gsd package: npm:@plannotator/pi-extension
-OK gsd package: npm:@narumitw/pi-wait-what
-GSD/Pi package exports already compatible or no patch needed
-OK npm extension packages
-OK safety-net blocks git reset --hard
-OK safety-net allows normal rg command
-Verification complete.
-```
-
-## 6. Restart sessions
-
-Restart any running GSD/Pi/Codex sessions so extensions load at startup.
-
-Useful commands/tools after reload:
-
-- `/wait-what`
-- `/plannotator`
-- `subagent`
-- `module_report`
-- `read_symbol`
-- `lsp_diagnostics`
-- `lens_diagnostics`
-- `/graphify` (knowledge-graph build/query; see [`GRAPHIFY.md`](GRAPHIFY.md))
-
-## 7. First smoke test
-
-From your project repo:
+## Updating later
 
 ```bash
-cd "$PROJECT_REPO"
-git status --short --branch --untracked-files=all
+cd "$HOME/code/gsd-pi-workstation-template"
+git pull --ff-only
+./scripts/install.sh --profile full --project-repo "$HOME/code/your-project" --dry-run
+./scripts/install.sh --profile full --project-repo "$HOME/code/your-project" --overwrite
+./scripts/verify.sh --profile full --project-repo "$HOME/code/your-project"
 ```
 
-Start a fresh GSD/Pi session and ask a read-only codebase question. The agent should use `AGENTS.md`, LSP/AST tools, and targeted reads instead of broad blind file reads.
-
-## Troubleshooting
-
-### A package is missing from `gsd list`
-
-Install it explicitly:
-
-```bash
-gsd install npm:pi-lens
-gsd install npm:pi-subagents
-gsd install npm:pi-simplify
-gsd install npm:@plannotator/pi-extension
-gsd install npm:@narumitw/pi-wait-what
-gsd install git:github.com/hjanuschka/pi-multi-pass
-```
-
-### `/wait-what` or `/plannotator` is missing
-
-Restart the GSD/Pi session. Package commands load at startup.
-
-### Codex safety-net is missing
-
-Rerun:
-
-```bash
-./scripts/install.sh --project-repo "$PROJECT_REPO" --overwrite
-./scripts/verify.sh --project-repo "$PROJECT_REPO"
-```
-
-If Codex prompts about hook trust in the TUI, use `/hooks` and trust the safety-net PreToolUse hook.
-
-### `verify.sh` says `pi` is missing
-
-Run the installer again so it can create the `pi -> gsd` alias:
-
-```bash
-./scripts/install.sh --project-repo "$PROJECT_REPO" --overwrite
-./scripts/verify.sh --project-repo "$PROJECT_REPO"
-```
-
-### `verify.sh` says GSD/Pi exports need patching
-
-Run the installer again without `--skip-gsd-export-patch`:
-
-```bash
-./scripts/install.sh --project-repo "$PROJECT_REPO" --overwrite
-./scripts/verify.sh --project-repo "$PROJECT_REPO"
-```
-
-### `verify.sh` warns that graphify is not found
-
-graphify is a reference-install and needs `uv` or `pipx`. Install `uv`, then
-rerun the installer, or install manually:
-
-```bash
-brew install uv                # or: pipx ensurepath
-uv tool install graphifyy      # the command stays `graphify`
-graphify install               # registers the /graphify skill
-```
-
-Skip graphify entirely with `./scripts/install.sh ... --skip-graphify`.
+See [Troubleshooting](TROUBLESHOOTING.md) for recovery and partial-install diagnostics.

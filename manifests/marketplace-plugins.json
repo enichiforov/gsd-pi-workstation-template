@@ -2,7 +2,8 @@
   "description": "Coding-workflow marketplace plugins ('how to write good code') reproduced from a public git marketplace. Installed for both Claude Code and Codex from the same source, so no third-party plugin code is vendored into this repo.",
   "marketplace": {
     "name": "claude-code-workflows",
-    "source": "wshobson/agents"
+    "source": "wshobson/agents",
+    "ref": "c4b82b0ad771190355eb8e204b1329732a18449a"
   },
   "claude_plugins": [
     "agent-teams",

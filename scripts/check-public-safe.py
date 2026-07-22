@@ -17,7 +17,19 @@ PATTERNS = {
     "op_ref": re.compile(r"op://"),
 }
 
-SKIP_PARTS = {".git", "node_modules", "__pycache__"}
+SKIP_PARTS = {
+    ".bg-shell",
+    ".git",
+    ".gsd",
+    ".pi-subagents",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".venv",
+    "node_modules",
+    "receipts",
+    "__pycache__",
+}
+SKIP_NAMES = {".mcp.json", "CLAUDE.md"}
 
 
 def main() -> int:
@@ -25,9 +37,9 @@ def main() -> int:
     scanned = 0
     self_path = Path(__file__).resolve()
     for path in ROOT.rglob("*"):
-        if any(part in SKIP_PARTS for part in path.parts):
+        if path.name in SKIP_NAMES or any(part in SKIP_PARTS for part in path.parts):
             continue
-        if not path.is_file() or path.resolve() == self_path:
+        if path.is_symlink() or not path.is_file() or path.resolve() == self_path:
             continue
         scanned += 1
         text = path.read_text(errors="ignore")

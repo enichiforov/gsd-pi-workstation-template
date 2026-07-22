@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Patch npm-installed GSD/Pi package exports for community Pi extensions.
 
-Some community extensions import legacy package names such as
-`@earendil-works/pi-coding-agent` and `@earendil-works/pi-ai/oauth`.
-Recent `@opengsd/gsd-pi` npm builds ship those packages with ESM-oriented
+Some community extensions import GSD runtime packages through both legacy
+`@earendil-works/*` aliases and current `@gsd/*` names. Recent
+`@opengsd/gsd-pi` npm builds ship several of those packages with ESM-oriented
 export maps that can break lifecycle extension loading in Node's mixed import
 path.
 
@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -36,6 +37,9 @@ def load_json(path: Path) -> dict[str, Any]:
 
 def write_json(path: Path, data: dict[str, Any], *, dry_run: bool) -> None:
     if not dry_run:
+        backup = path.with_name(f"{path.name}.gsd-pi-workstation.bak")
+        if not backup.exists():
+            shutil.copy2(path, backup)
         path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
 
 
@@ -78,12 +82,31 @@ def add_pi_ai_oauth_export(pkg_json: Path, *, dry_run: bool) -> bool:
 
 
 def candidate_packages(gsd_root: Path) -> list[Path]:
+    package_names = {
+        "@earendil-works": ("pi-agent-core", "pi-ai", "pi-coding-agent", "pi-tui"),
+        "@gsd": ("agent-core", "agent-modes", "pi-agent-core", "pi-ai", "pi-coding-agent", "pi-tui"),
+    }
     return [
-        gsd_root / "node_modules" / "@earendil-works" / "pi-coding-agent" / "package.json",
-        gsd_root / "node_modules" / "@gsd" / "pi-coding-agent" / "package.json",
-        gsd_root / "node_modules" / "@earendil-works" / "pi-ai" / "package.json",
-        gsd_root / "node_modules" / "@gsd" / "pi-ai" / "package.json",
+        gsd_root / "node_modules" / scope / package / "package.json"
+        for scope, packages in package_names.items()
+        for package in packages
     ]
+
+
+def installed_gsd_version(gsd_root: Path) -> tuple[int, int, int] | None:
+    value = load_json(gsd_root / "package.json").get("version")
+    if not isinstance(value, str):
+        return None
+    numeric = value.split("-", 1)[0].split(".")
+    if len(numeric) != 3 or not all(part.isdigit() for part in numeric):
+        return None
+    return int(numeric[0]), int(numeric[1]), int(numeric[2])
+
+
+def supports_patch(version: tuple[int, int, int] | None) -> bool:
+    return version is not None and (
+        (1, 7, 0) <= version < (1, 9, 0) or (1, 11, 0) <= version < (1, 12, 0)
+    )
 
 
 def main() -> int:
@@ -101,26 +124,39 @@ def main() -> int:
         print(f"WARN @opengsd/gsd-pi not found under {root}; skipped GSD export patch", file=sys.stderr)
         return 0
 
-    dry_run = args.check
+    packages = [pkg for pkg in candidate_packages(gsd_root) if pkg.exists()]
     changes: list[str] = []
-    for pkg in candidate_packages(gsd_root):
-        if not pkg.exists():
-            continue
-        if add_default_exports(pkg, dry_run=dry_run):
+    for pkg in packages:
+        if add_default_exports(pkg, dry_run=True):
             changes.append(f"default exports: {pkg}")
-        if pkg.parent.name == "pi-ai" and add_pi_ai_oauth_export(pkg, dry_run=dry_run):
+        if pkg.parent.name == "pi-ai" and add_pi_ai_oauth_export(pkg, dry_run=True):
             changes.append(f"oauth export: {pkg}")
 
-    if changes:
-        if args.check:
-            print("GSD/Pi package export compatibility patch is needed:")
-        else:
-            print("Patched GSD/Pi package exports:")
-        for item in changes:
-            print(f"- {item}")
-        return 1 if args.check else 0
+    if not changes:
+        print("GSD/Pi package exports already compatible or no patch needed")
+        return 0
 
-    print("GSD/Pi package exports already compatible or no patch needed")
+    print("GSD/Pi package export compatibility patch is needed:")
+    for item in changes:
+        print(f"- {item}")
+    if args.check:
+        return 1
+
+    version = installed_gsd_version(gsd_root)
+    if not supports_patch(version):
+        rendered = "unknown" if version is None else ".".join(str(part) for part in version)
+        print(
+            f"REFUSED compatibility patch for unsupported GSD/Pi version {rendered}; "
+            "supported ranges are >=1.7.0,<1.9.0 and >=1.11.0,<1.12.0",
+            file=sys.stderr,
+        )
+        return 2
+
+    for pkg in packages:
+        add_default_exports(pkg, dry_run=False)
+        if pkg.parent.name == "pi-ai":
+            add_pi_ai_oauth_export(pkg, dry_run=False)
+    print("Patched GSD/Pi package exports")
     return 0
 
 

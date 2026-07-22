@@ -1,26 +1,38 @@
 {
+  "schema_version": 1,
   "template": "gsd-pi-workstation-template",
-  "gsd_version_observed": "1.7.0",
-  "codex_version_observed": "codex-cli 0.142.5",
-  "gh_version_observed": "gh version 2.87.3 (2026-02-23)",
-  "npm_dependencies": {
-    "@narumitw/pi-wait-what": "^0.11.0",
-    "@plannotator/pi-extension": "^0.22.0",
-    "cc-safety-net": "^1.0.6",
-    "pi-lens": "^3.8.65",
-    "pi-simplify": "^0.2.2",
-    "pi-subagents": "^0.33.1"
+  "updated_at": "2026-07-22",
+  "minimum_versions": {
+    "gsd": "1.11.0",
+    "node": "22"
   },
-  "installed_npm_versions_observed": {
-    "@narumitw/pi-wait-what": "0.11.0",
-    "@plannotator/pi-extension": "0.22.0",
+  "pinned_dependencies": {
+    "@narumitw/pi-wait-what": "0.13.1",
+    "@plannotator/pi-extension": "0.24.2",
     "cc-safety-net": "1.0.6",
-    "pi-lens": "3.8.65",
-    "pi-simplify": "0.2.2",
-    "pi-subagents": "0.33.1"
+    "get-shit-done-cc": "1.42.3",
+    "graphifyy": "0.9.23",
+    "pi-lens": "3.8.71",
+    "pi-simplify": "0.2.3",
+    "pi-subagents": "0.34.0"
+  },
+  "git_sources": {
+    "pi-multi-pass": {
+      "repository": "hjanuschka/pi-multi-pass",
+      "ref": "b9d9d1d7a09252a19ec79868517d49d4f07c4760"
+    },
+    "coding-workflows": {
+      "repository": "wshobson/agents",
+      "ref": "c4b82b0ad771190355eb8e204b1329732a18449a"
+    }
   },
   "codex_safety_net": {
     "marketplace": "kenryu42/cc-marketplace",
+    "ref": "d30c31beee53705bda0683e57546fbe913d363ef",
     "plugin": "safety-net@cc-marketplace"
+  },
+  "smoke_test": {
+    "gsd_npm_spec": "@opengsd/gsd-pi@1.11.0",
+    "image": "node:22-bookworm@sha256:5647be709086c696ff32edaaf1c70cd26d1da6ab2b39c32f3c7b4c4a31957e37"
   }
 }

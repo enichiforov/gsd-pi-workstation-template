@@ -2,6 +2,15 @@ node_modules/
 .npm/
 .cache/
 .tmp/
+.bg-shell/
+.gsd/
+.pi-subagents/
+.mcp.json
+receipts/
+**/CLAUDE.md
+.pytest_cache/
+.ruff_cache/
+.venv/
 __pycache__/
 *.pyc
 dist/
